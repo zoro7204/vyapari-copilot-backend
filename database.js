@@ -50,7 +50,10 @@ async function getTransactionById(id) {
  */
 async function deleteTransaction(id) {
   await db.read();
-  db.data.transactions = db.data.transactions.filter(tx => tx.id !== id);
+  db.data.transactions = db.data.transactions.filter(tx => {
+  // Check against the timestamp ID, the human-readable Order ID, and the human-readable Expense ID
+  return tx.id !== id && tx.orderId !== id && tx.expenseId !== id;
+  });
   await db.write();
   console.log(`Deleted transaction ${id} from db.json.`);
 }
@@ -83,11 +86,17 @@ async function getLastSaleTransaction(entryByUser) {
   return userSales.length > 0 ? userSales[0] : null;
 }
 
+async function getAllExpenses() {
+  const allTransactions = await getAllTransactions();
+  return allTransactions.filter(tx => tx.type === 'Expense');
+}
+
 // We need to export the new getTransactionById and initializeDb functions as well
 module.exports = {
   initializeDb,
   appendTransaction,
   getAllTransactions,
+  getAllExpenses,
   getTransactionById, 
   getLastSaleTransaction,
   deleteTransaction,

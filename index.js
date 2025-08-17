@@ -41,6 +41,7 @@ const {
   initializeDb,
   appendTransaction, 
   getAllTransactions, 
+  getAllExpenses,
   deleteTransaction, 
   updateTransaction, 
   getTransactionById 
@@ -180,7 +181,9 @@ app.get('/api/orders', async (req, res) => {
 
     // THE FIX 2: Map transaction objects to the format the frontend needs
     const orders = saleTransactions.map(tx => ({
-      id: tx.id, // The DB key is now the permanent ID
+      id: tx.id,
+      orderId: tx.orderId,
+      rate: tx.rate, // The DB key is now the permanent ID
       customer: {
         name: tx.customerName || 'N/A',
         phone: tx.customerPhone || 'N/A',
@@ -252,6 +255,24 @@ app.get('/api/customers', async (req, res) => {
   }
 });
 
+// --- Helper function for unique Expense IDs ---
+function getNextExpenseId(allExpenses) {
+  if (!allExpenses || allExpenses.length === 0) {
+    return 'EXP-001';
+  }
+
+  const highestIdNum = allExpenses.reduce((maxId, exp) => {
+    if (exp.expenseId && exp.expenseId.startsWith('EXP-')) {
+      const currentIdNum = parseInt(exp.expenseId.split('-')[1], 10);
+      return currentIdNum > maxId ? currentIdNum : maxId;
+    }
+    return maxId;
+  }, 0);
+
+  const nextIdNum = highestIdNum + 1;
+  return `EXP-${String(nextIdNum).padStart(3, '0')}`;
+}
+
 // =======================================================
 //  API ENDPOINT FOR EXPENSES
 // =======================================================
@@ -260,10 +281,7 @@ app.get('/api/expenses', async (req, res) => {
     console.log('API call received: /api/expenses');
 
     // 1. Get all transactions from our database
-    const allTransactions = await getAllTransactions();
-
-    // 2. Filter the results to only include 'Expense' transactions
-    const expenseTransactions = allTransactions.filter(tx => tx.type === 'Expense');
+    const expenseTransactions = await getAllExpenses();
 
     // 3. Map the data to a clean format for the frontend
     const expenses = expenseTransactions.map(tx => ({
@@ -271,7 +289,7 @@ app.get('/api/expenses', async (req, res) => {
       expenseId: tx.expenseId, 
       item: tx.item,
       category: tx.category || 'Uncategorized',
-      amount: tx.total,
+      amount: tx.amount,
       date: tx.id.split('T')[0], // Get date from the ISO timestamp ID
     }));
 
@@ -296,20 +314,19 @@ app.post('/api/expenses', async (req, res) => {
       return res.status(400).json({ error: 'Item/Reason and Amount are required.' });
     }
 
-    // --- NEW LOGIC TO CREATE HUMAN-READABLE ID ---
-    const allTransactions = await getAllTransactions();
-    const expenseCount = allTransactions.filter(tx => tx.type === 'Expense').length;
-    const expenseId = `EXP-${String(expenseCount + 1).padStart(3, '0')}`;
-    // ---------------------------------------------
+    // --- CORRECTED LOGIC TO CREATE UNIQUE ID ---
+    const allExpenses = await getAllExpenses();
+    const newExpenseId = getNextExpenseId(allExpenses);
 
     const transactionData = {
-      type: 'Expense',
-      expenseId: expenseId, // <-- ADD THE NEW ID
-      item: item,
-      category: category || 'Uncategorized',
-      total: parseFloat(amount),
-      entryBy: 'Dashboard'
-    };
+     type: 'Expense',
+     expenseId: newExpenseId, // Use the new variable
+     item: item,
+     category: (category || 'Uncategorized').trim().toLowerCase(),
+     amount: parseFloat(amount), // Use 'amount' instead of 'total'
+     date: new Date().toISOString(), // Add the date
+     entryBy: 'Dashboard'
+   };
 
     await appendTransaction(transactionData);
 
@@ -355,10 +372,10 @@ app.patch('/api/expenses/:id', async (req, res) => {
 
     // Our database function needs the 'total' property for expenses
     const dataToUpdate = {
-        item: updatedData.item,
-        category: updatedData.category || 'Uncategorized',
-        total: parseFloat(updatedData.amount)
-    };
+       item: updatedData.item,
+       category: (updatedData.category || 'Uncategorized').trim().toLowerCase(), // <-- Fixes case-sensitivity
+       amount: parseFloat(updatedData.amount) // <-- Fixes total/amount inconsistency
+   };
 
     await updateTransaction(id, dataToUpdate);
 
@@ -406,8 +423,24 @@ app.get('/api/expenses/csv', async (req, res) => {
   }
 });
 
+// --- Helper function for unique Order IDs ---
+function getNextOrderId(allSales) {
+    if (!allSales || allSales.length === 0) {
+        return 'ORD-001';
+    }
+    const highestIdNum = allSales.reduce((maxId, sale) => {
+        if (sale.orderId && sale.orderId.startsWith('ORD-')) {
+            const currentIdNum = parseInt(sale.orderId.split('-')[1], 10);
+            return currentIdNum > maxId ? currentIdNum : maxId;
+        }
+        return maxId;
+    }, 0);
+    const nextIdNum = highestIdNum + 1;
+    return `ORD-${String(nextIdNum).padStart(3, '0')}`;
+}
+
 // =======================================================
-//  API ENDPOINT TO CREATE A NEW ORDER (using Replit DB)
+//  API ENDPOINT TO CREATE A NEW ORDER 
 // =======================================================
 app.post('/api/orders', async (req, res) => {
   try {
@@ -438,8 +471,14 @@ app.post('/api/orders', async (req, res) => {
     const finalSellingPrice = originalTotalPrice - discountAmount;
     const profit = finalSellingPrice - totalCostPrice;
 
+    // --- Get all sales to generate the next unique ID ---
+    const allTransactions = await getAllTransactions();
+    const allSales = allTransactions.filter(tx => tx.type === 'Sale');
+    const newOrderId = getNextOrderId(allSales);
+
     // --- Create the Transaction Object for Replit DB ---
     const transactionData = {
+      orderId: newOrderId,
       type: 'Sale',
       item: orderDataFromForm.item,
       qty: orderDataFromForm.qty,
@@ -467,7 +506,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 // =======================================================
-//  API ENDPOINT TO DELETE AN ORDER (Upgraded for Replit DB)
+//  API ENDPOINT TO DELETE AN ORDER 
 // =======================================================
 app.delete('/api/orders/:id', async (req, res) => {
   try {
@@ -496,8 +535,65 @@ app.delete('/api/orders/:id', async (req, res) => {
     res.status(500).json({ error: 'Failed to delete the order.' });
   }
 });
+
 // =======================================================
-//  API ENDPOINT TO UPDATE AN ORDER'S STATUS (Upgraded for Replit DB)
+//  API ENDPOINT TO UPDATE AN ORDER (with Recalculation)
+// =======================================================
+app.patch('/api/orders/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // This is the timestamp ID from the database
+    const updates = req.body;   // The new data from our edit form
+
+    const existingTransaction = await getTransactionById(id);
+    if (!existingTransaction) {
+      return res.status(404).json({ error: 'Order not found.' });
+    }
+
+    // --- Start Recalculation Logic ---
+    const newItemName = updates.item || existingTransaction.item;
+    const newQty = parseInt(updates.qty, 10) || existingTransaction.qty;
+    const newRate = parseFloat(updates.rate) || existingTransaction.rate;
+    const newDiscountString = updates.discount || existingTransaction.discountString;
+
+    // 1. Re-fetch cost price in case the item changed
+    const itemDetails = await getItemDetails(newItemName.trim().toLowerCase());
+    if (!itemDetails) {
+      return res.status(404).json({ error: `Item "${newItemName}" not found in inventory.` });
+    }
+
+    // 2. Recalculate all financial figures using our existing helper function
+    const newGrossAmount = newRate * newQty;
+    const discountInfo = calculateDiscount(newGrossAmount, newDiscountString);
+    const newFinalSellingPrice = newGrossAmount - discountInfo.amount;
+    const newTotalCostPrice = itemDetails.costPrice * newQty;
+    const newProfit = newFinalSellingPrice - newTotalCostPrice;
+    // --- End Recalculation Logic ---
+
+    // Merge all changes into a final, correct object
+    const updatedTransaction = {
+      ...existingTransaction,
+      ...updates, // Applies status, customerName, etc. from the form
+      item: newItemName,
+      qty: newQty,
+      rate: newRate,
+      grossAmount: newGrossAmount,
+      discount: discountInfo.amount,
+      discountString: newDiscountString,
+      costPrice: newTotalCostPrice,
+      profit: newProfit
+    };
+
+    await updateTransaction(id, updatedTransaction);
+
+    res.status(200).json({ message: 'Order updated successfully with new totals.' });
+  } catch (error) {
+    console.error(`API Error in PATCH /api/orders/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update order.' });
+  }
+});
+
+// =======================================================
+//  API ENDPOINT TO UPDATE AN ORDER'S STATUS 
 // =======================================================
 app.patch('/api/orders/:id/status', async (req, res) => {
   try {
