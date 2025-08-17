@@ -1,0 +1,109 @@
+{
+  "transactions": [
+    {
+      "id": "2025-08-16T09:37:19.396Z",
+      "type": "Sale",
+      "item": "denim jeans",
+      "qty": 1,
+      "rate": 1400,
+      "grossAmount": 1400,
+      "discount": 280,
+      "discountString": "20%",
+      "costPrice": 800,
+      "profit": 320,
+      "status": "completed",
+      "customerName": "VEERESH",
+      "customerPhone": "7483779943",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-16T11:26:44.875Z",
+      "type": "Sale",
+      "item": "denim jeans",
+      "qty": 1,
+      "rate": 1200,
+      "grossAmount": 1200,
+      "discount": 0,
+      "discountString": null,
+      "costPrice": 800,
+      "profit": 400,
+      "status": "Confirmed",
+      "customerName": "Veeresh",
+      "customerPhone": "929170184",
+      "entryBy": "Veeresh"
+    },
+    {
+      "id": "2025-08-16T11:27:51.020Z",
+      "type": "Sale",
+      "item": "denim jeans",
+      "qty": 1,
+      "rate": 1400,
+      "grossAmount": 1400,
+      "discount": 0,
+      "discountString": null,
+      "costPrice": 800,
+      "profit": 600,
+      "status": "Confirmed",
+      "customerName": "raju",
+      "customerPhone": "7845784578",
+      "entryBy": "Veeresh"
+    },
+    {
+      "id": "2025-08-16T11:29:15.770Z",
+      "type": "Sale",
+      "item": "denim jeans",
+      "qty": 2,
+      "rate": 700,
+      "grossAmount": 1400,
+      "discount": 0,
+      "discountString": null,
+      "costPrice": 1600,
+      "profit": -200,
+      "status": "completed",
+      "customerName": "ramesh",
+      "customerPhone": "7845784589",
+      "entryBy": "Veeresh"
+    },
+    {
+      "id": "2025-08-16T12:25:58.888Z",
+      "type": "Sale",
+      "item": "denim jeans",
+      "qty": 2,
+      "rate": 1400,
+      "grossAmount": 2800,
+      "discount": 0,
+      "discountString": null,
+      "costPrice": 1600,
+      "profit": 1200,
+      "status": "Confirmed",
+      "customerName": "somesh",
+      "customerPhone": "7845785689",
+      "entryBy": "Veeresh"
+    },
+    {
+      "id": "2025-08-16T13:35:04.895Z",
+      "type": "User",
+      "name": "veeresh",
+      "email": "roronoazoro16503@gmail.com",
+      "password": "$2b$10$cYdefl9PNU.l0MUPPXOjz.0NoonR1DZc0hjqmqaipfM.zifENqYW2"
+    },
+    {
+      "id": "2025-08-16T16:52:39.654Z",
+      "type": "Expense",
+      "expenseId": "EXP-001",
+      "item": "pizza",
+      "category": "food",
+      "total": 501,
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-16T19:06:06.040Z",
+      "type": "Expense",
+      "expenseId": "EXP-003",
+      "item": "agarbati",
+      "category": "pooja",
+      "total": 120,
+      "entryBy": "Dashboard"
+    }
+  ]
+}
