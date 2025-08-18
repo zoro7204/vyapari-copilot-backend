@@ -60,17 +60,26 @@ async function deleteTransaction(id) {
 
 /**
  * Updates a single transaction. Merges new data with old data.
+ * Can find the record by its timestamp id, orderId, expenseId, or customerId.
  */
 async function updateTransaction(id, updatedData) {
   await db.read();
-  const txIndex = db.data.transactions.findIndex(tx => tx.id === id);
+  const txIndex = db.data.transactions.findIndex(tx => 
+    tx.id === id || 
+    tx.orderId === id ||
+    tx.expenseId === id ||
+    tx.customerId === id
+  );
+
   if (txIndex !== -1) {
     // Merge the existing transaction with the updated data
     db.data.transactions[txIndex] = { ...db.data.transactions[txIndex], ...updatedData };
     await db.write();
     console.log(`Updated transaction ${id}.`);
+    return db.data.transactions[txIndex]; // Return the updated transaction
   } else {
     console.log(`Could not find transaction ${id} to update.`);
+    throw new Error(`Transaction with ID ${id} not found.`);
   }
 }
 

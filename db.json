@@ -1,6 +1,22 @@
 {
   "transactions": [
     {
+  "id": "2025-05-10T10:00:00.000Z",
+  "orderId": "ORD-OLD",
+  "type": "Sale",
+  "item": "vintage shirt",
+  "qty": 1,
+  "rate": 1500,
+  "grossAmount": 1500,
+  "discount": 0,
+  "costPrice": 700,
+  "profit": 800,
+  "status": "completed",
+  "customerName": "Old Customer",
+  "customerPhone": "1234567890",
+  "entryBy": "Dashboard"
+},
+    {
       "id": "2025-08-16T09:37:19.396Z",
       "orderId": "ORD-001",
       "type": "Sale",
@@ -219,6 +235,49 @@
       "customerName": "RAVI",
       "customerPhone": "7204850677",
       "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-18T16:32:14+05:30",
+      "orderId": "ORD-011",
+      "type": "Sale",
+      "item": "polo shirt",
+      "qty": 1,
+      "rate": 1200,
+      "grossAmount": 1200,
+      "discount": 0,
+      "discountString": "0",
+      "costPrice": 450,
+      "profit": 750,
+      "status": "Confirmed",
+      "customerName": "saketh",
+      "customerPhone": "9611709362",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-18T16:32:54+05:30",
+      "orderId": "ORD-012",
+      "type": "Sale",
+      "item": "cotton kurta",
+      "qty": 1,
+      "rate": 1000,
+      "grossAmount": 1000,
+      "discount": 0,
+      "discountString": "0",
+      "costPrice": 650,
+      "profit": 350,
+      "status": "Confirmed",
+      "customerName": "saketh",
+      "customerPhone": "9611709362",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-18T18:11:17+05:30",
+      "type": "Customer",
+      "customerId": null,
+      "name": "saketh",
+      "phone": "9611709362",
+      "status": "Archived"
     }
   ]
 }
+

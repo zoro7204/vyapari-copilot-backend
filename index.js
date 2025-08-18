@@ -183,7 +183,7 @@ app.get('/api/orders', async (req, res) => {
     const orders = saleTransactions.map(tx => ({
       id: tx.id,
       orderId: tx.orderId,
-      rate: tx.rate, // The DB key is now the permanent ID
+      rate: tx.rate, 
       customer: {
         name: tx.customerName || 'N/A',
         phone: tx.customerPhone || 'N/A',
@@ -207,51 +207,254 @@ app.get('/api/orders', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders data.' });
   }
 });
+
+// ADD THIS ENTIRE NEW FUNCTION
+async function calculateGrowthData(period = 'all') {
+  const allTransactions = await getAllTransactions();
+  const saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
+
+  const customerFirstPurchase = new Map();
+
+  // First, find the very first purchase date for each unique customer
+  for (const sale of saleTransactions) {
+    if (sale.customerName) {
+      const normalizedPhone = (sale.customerPhone || '').replace(/\D/g, '');
+      const customerKey = `${sale.customerName.toLowerCase().trim()}:${normalizedPhone}`;
+      const saleDate = new Date(sale.id);
+
+      if (!customerFirstPurchase.has(customerKey) || saleDate < customerFirstPurchase.get(customerKey)) {
+        customerFirstPurchase.set(customerKey, saleDate);
+      }
+    }
+  }
+
+  const firstPurchases = Array.from(customerFirstPurchase.values());
+  const now = new Date();
+  let growthData = [];
+
+  if (period === 'week') {
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      const nextDay = new Date(date);
+      nextDay.setDate(date.getDate() + 1);
+
+      const newCustomers = firstPurchases.filter(d => d >= date && d < nextDay).length;
+      growthData.push({
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        newCustomers
+      });
+    }
+  } else if (period === 'month') {
+    for (let i = 29; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(now.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDay = new Date(date);
+      nextDay.setDate(date.getDate() + 1);
+
+      const newCustomers = firstPurchases.filter(d => d >= date && d < nextDay).length;
+      growthData.push({
+        date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        newCustomers
+      });
+    }
+  } else { // Default to 'all' for the last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      
+      const newCustomers = firstPurchases.filter(d => d >= date && d < nextMonth).length;
+      growthData.push({
+        date: date.toLocaleString('en-US', { month: 'short', year: '2-digit' }),
+        newCustomers
+      });
+    }
+  }
+  return growthData;
+}
+
 // =======================================================
-//  API ENDPOINT FOR CUSTOMERS (Upgraded for Replit DB)
+//  HELPER FUNCTION FOR CUSTOMER ANALYTICS (FINAL VERSION)
+// =======================================================
+async function aggregateCustomerData(period = 'all') {
+  const allTransactions = await getAllTransactions();
+  
+  const archivedCustomerKeys = new Set(
+    allTransactions
+      .filter(tx => tx.type === 'Customer' && tx.status === 'Archived')
+      .map(cust => `${cust.name.toLowerCase().trim()}:${cust.phone.replace(/\D/g, '')}`)
+  );
+
+  let saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
+
+  // --- NEW: Filter sales by the requested time period ---
+  const now = new Date();
+  let startDate;
+
+  if (period === 'today') {
+    startDate = new Date(now.setHours(0, 0, 0, 0));
+  } else if (period === 'week') {
+    const dayOfWeek = now.getDay();
+    startDate = new Date(now.setDate(now.getDate() - dayOfWeek));
+    startDate.setHours(0, 0, 0, 0);
+  } else if (period === 'month') {
+    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    startDate.setHours(0, 0, 0, 0);
+  }
+  
+  if (startDate) {
+    saleTransactions = saleTransactions.filter(sale => new Date(sale.id) >= startDate);
+  }
+  // If period is 'all', we don't filter by date.
+  // --- END OF NEW LOGIC ---
+
+  const customerData = new Map();
+
+  for (const sale of saleTransactions) {
+    if (sale.customerName) {
+      const normalizedPhone = (sale.customerPhone || '').replace(/\D/g, '');
+      const customerKey = `${sale.customerName.toLowerCase().trim()}:${normalizedPhone}`;
+
+      if (archivedCustomerKeys.has(customerKey)) {
+        continue;
+      }
+
+      if (!customerData.has(customerKey)) {
+        customerData.set(customerKey, {
+          name: sale.customerName.trim(), 
+          phone: sale.customerPhone || '',
+          totalOrders: 0,
+          totalSpend: 0,
+          firstPurchaseDate: new Date(sale.id), 
+          lastPurchaseDate: new Date(0),
+        });
+      }
+
+      const customer = customerData.get(customerKey);
+      customer.totalOrders += 1;
+      customer.totalSpend += ((sale.grossAmount || 0) - (sale.discount || 0));
+      
+      const saleDate = new Date(sale.id);
+      if (saleDate > customer.lastPurchaseDate) {
+        customer.lastPurchaseDate = saleDate;
+      }
+      if (saleDate < customer.firstPurchaseDate) {
+        customer.firstPurchaseDate = saleDate;
+      }
+    }
+  }
+
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+  const finalCustomerList = [...customerData.values()].map(customer => ({
+    ...customer,
+    id: `${customer.name.toLowerCase().trim()}:${customer.phone.replace(/\D/g, '')}`,
+    status: customer.lastPurchaseDate > thirtyDaysAgo ? 'Active' : 'Inactive',
+    since: customer.firstPurchaseDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' })
+  }));
+  
+  return finalCustomerList;
+}
+
+// =======================================================
+//  API ENDPOINT FOR CUSTOMERS (Refactored)
 // =======================================================
 app.get('/api/customers', async (req, res) => {
   try {
-    console.log('API call received: /api/customers');
-
-    // THE FIX 1: Get data from our new database
-    const allTransactions = await getAllTransactions();
-    const customersMap = {};
-
-    // Loop through transaction objects
-    for (const tx of allTransactions) {
-      // Process only 'Sale' transactions that have a customer name
-      if (tx.type === 'Sale' && tx.customerName) {
-
-        const saleAmount = (tx.grossAmount || 0) - (tx.discount || 0);
-        const key = tx.customerPhone || tx.customerName.trim().toLowerCase();
-
-        if (!customersMap[key]) {
-          customersMap[key] = {
-            id: key,
-            name: tx.customerName,
-            phone: tx.customerPhone || 'N/A',
-            email: 'N/A',
-            address: 'N/A',
-            totalOrders: 0,
-            totalSpent: 0,
-            since: '2025', // Placeholder
-          };
-        }
-
-        customersMap[key].totalOrders += 1;
-        customersMap[key].totalSpent += saleAmount;
-      }
-    }
-
-    const customers = Object.values(customersMap);
-
-    console.log(`Found and sending ${customers.length} unique customers.`);
-    res.json(customers);
+    const period = req.query.period || 'all';
+    
+    // We now call both helper functions
+    const customers = await aggregateCustomerData(period);
+    const growthData = await calculateGrowthData(period);
+    
+    console.log(`Found ${customers.length} unique customers and growth data for period: ${period}.`);
+    
+    // Return a single object with both sets of data
+    res.json({ customers, growthData });
 
   } catch (error) {
     console.error('API Error in /api/customers:', error);
-    res.status(500).json({ error: 'Failed to fetch customers data.' });
+    res.status(500).json({ error: 'Failed to fetch customer data.' });
+  }
+});
+// =======================================================
+//  API ENDPOINT FOR A SINGLE CUSTOMER'S DETAILS
+// =======================================================
+app.get('/api/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    // 1. Parse the composite ID to get the name and phone to look for
+    const [name, phone] = id.split(':');
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Invalid customer ID format.' });
+    }
+
+    const allTransactions = await getAllTransactions();
+    const saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
+
+    // 2. Find all orders belonging to this specific customer
+    const customerOrders = saleTransactions.filter(sale => {
+      if (sale.customerName && sale.customerPhone) {
+        const normalizedSalePhone = sale.customerPhone.replace(/\D/g, '');
+        const saleName = sale.customerName.toLowerCase().trim();
+        // Match against the parsed name and phone
+        return saleName === name && normalizedSalePhone === phone;
+      }
+      return false;
+    });
+
+    // 3. If no orders are found, the customer doesn't exist
+    if (customerOrders.length === 0) {
+      return res.status(404).json({ error: 'Customer not found.' });
+    }
+
+    // 4. Aggregate stats from the filtered orders
+    let lifetimeSpend = 0;
+    let firstPurchaseDate = new Date(customerOrders[0].id);
+    let lastPurchaseDate = new Date(customerOrders[0].id);
+
+    const orderHistory = customerOrders.map(order => {
+      const finalAmount = (order.grossAmount || 0) - (order.discount || 0);
+      lifetimeSpend += finalAmount;
+
+      const orderDate = new Date(order.id);
+      if (orderDate < firstPurchaseDate) firstPurchaseDate = orderDate;
+      if (orderDate > lastPurchaseDate) lastPurchaseDate = orderDate;
+
+      return {
+        orderId: order.orderId || 'N/A',
+        date: orderDate.toISOString().split('T')[0],
+        items: `${order.qty} x ${order.item}`,
+        amount: finalAmount,
+        status: order.status || 'Confirmed'
+      };
+    });
+    
+    // 5. Calculate final derived values
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    const customerDetails = {
+      name: customerOrders[0].customerName.trim(),
+      phone: customerOrders[0].customerPhone,
+      status: lastPurchaseDate > thirtyDaysAgo ? 'Active' : 'Inactive',
+      since: firstPurchaseDate.toLocaleDateString('en-IN', { year: 'numeric', month: 'short' }),
+      lifetimeSpend: lifetimeSpend,
+      averageOrderValue: lifetimeSpend / customerOrders.length,
+      orderHistory: orderHistory.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()), // Show newest first
+    };
+
+    res.json(customerDetails);
+
+  } catch (error) {
+    console.error(`API Error in /api/customers/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to fetch customer details.' });
   }
 });
 
@@ -272,6 +475,167 @@ function getNextExpenseId(allExpenses) {
   const nextIdNum = highestIdNum + 1;
   return `EXP-${String(nextIdNum).padStart(3, '0')}`;
 }
+
+// --- Helper function for unique Customer IDs ---
+function getNextCustomerId(allCustomers) {
+  if (!allCustomers || allCustomers.length === 0) {
+    return 'CUST-001';
+  }
+
+  const highestIdNum = allCustomers.reduce((maxId, cust) => {
+    if (cust.customerId && cust.customerId.startsWith('CUST-')) {
+      const currentIdNum = parseInt(cust.customerId.split('-')[1], 10);
+      return currentIdNum > maxId ? currentIdNum : maxId;
+    }
+    return maxId;
+  }, 0);
+
+  const nextIdNum = highestIdNum + 1;
+  return `CUST-${String(nextIdNum).padStart(3, '0')}`;
+}
+
+// =======================================================
+//  API ENDPOINT TO MANUALLY CREATE A NEW CUSTOMER
+// =======================================================
+app.post('/api/customers', async (req, res) => {
+  try {
+    const { name, phone } = req.body;
+
+    // 1. Validate input
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Name and Phone are required.' });
+    }
+
+    const allTransactions = await getAllTransactions();
+    const allCustomers = allTransactions.filter(tx => tx.type === 'Customer');
+
+    // 2. Robust duplicate check (using the same normalization as our GET endpoint)
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const normalizedName = name.toLowerCase().trim();
+    const existingCustomer = allCustomers.find(cust => {
+      const custPhone = cust.phone.replace(/\D/g, '');
+      const custName = cust.name.toLowerCase().trim();
+      return custName === normalizedName && custPhone === normalizedPhone;
+    });
+
+    if (existingCustomer) {
+      return res.status(409).json({ error: 'A customer with this name and phone number already exists.' });
+    }
+
+    // 3. Generate a new unique ID
+    const newCustomerId = getNextCustomerId(allCustomers);
+
+    // 4. Create and save the new customer object
+    const newCustomer = {
+      type: 'Customer',
+      customerId: newCustomerId,
+      name: name.trim(),
+      phone: phone,
+      status: 'Active', // Default status
+    };
+
+    await appendTransaction(newCustomer);
+
+    res.status(201).json({ message: 'Customer created successfully!', customer: newCustomer });
+
+  } catch (error) {
+    console.error('API Error in POST /api/customers:', error);
+    res.status(500).json({ error: 'Failed to create the new customer.' });
+  }
+});
+
+// =======================================================
+//  API ENDPOINT TO UPDATE A CUSTOMER
+// =======================================================
+app.patch('/api/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // This is the customerId, e.g., "CUST-001"
+    const { name, phone } = req.body;
+
+    // 1. Validate input
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Name and Phone are required.' });
+    }
+
+    // 2. Check for duplicates (ensuring we don't conflict with *other* customers)
+    const allTransactions = await getAllTransactions();
+    const allCustomers = allTransactions.filter(tx => tx.type === 'Customer');
+
+    const normalizedPhone = phone.replace(/\D/g, '');
+    const normalizedName = name.toLowerCase().trim();
+
+    // Find if another customer (not the one we're editing) already has this name/phone combo
+    const conflictingCustomer = allCustomers.find(cust => {
+      if (cust.customerId === id) return false; // Skip the customer we are currently editing
+      const custPhone = cust.phone.replace(/\D/g, '');
+      const custName = cust.name.toLowerCase().trim();
+      return custName === normalizedName && custPhone === normalizedPhone;
+    });
+
+    if (conflictingCustomer) {
+      return res.status(409).json({ error: 'Another customer with this name and phone already exists.' });
+    }
+    
+    // 3. Prepare the data and update the record using our upgraded function
+    const dataToUpdate = {
+      name: name.trim(),
+      phone,
+    };
+
+    const updatedCustomer = await updateTransaction(id, dataToUpdate);
+
+    res.status(200).json({ message: 'Customer updated successfully!', customer: updatedCustomer });
+
+  } catch (error) {
+    console.error(`API Error in PATCH /api/customers/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update the customer.' });
+  }
+});
+
+// =======================================================
+//  API ENDPOINT TO "DELETE" (ARCHIVE) A CUSTOMER (UPGRADED)
+// =======================================================
+app.delete('/api/customers/:id', async (req, res) => {
+  try {
+    const { id } = req.params; // This is the composite ID, e.g., "saketh:9611709362"
+    const [name, phone] = id.split(':');
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Invalid customer ID format.' });
+    }
+
+    const allTransactions = await getAllTransactions();
+    const allCustomers = allTransactions.filter(tx => tx.type === 'Customer');
+
+    // Find if an explicit record for this customer already exists
+    const existingCustomer = allCustomers.find(cust => {
+      const custPhone = cust.phone.replace(/\D/g, '');
+      const custName = cust.name.toLowerCase().trim();
+      return custName === name && custPhone === phone;
+    });
+
+    if (existingCustomer) {
+      // If the customer exists, update their status to Archived
+      await updateTransaction(existingCustomer.id, { status: 'Archived' });
+      res.status(200).json({ message: `Customer ${existingCustomer.customerId || existingCustomer.name} has been archived.` });
+    } else {
+      // If the customer does NOT exist, create a new record for them that is already archived
+      const newArchivedCustomer = {
+        type: 'Customer',
+        // We don't need a CUST-ID for these archived stubs
+        customerId: null, 
+        name: name, // Use the name from the ID
+        phone: phone, // Use the phone from the ID
+        status: 'Archived',
+      };
+      await appendTransaction(newArchivedCustomer);
+      res.status(200).json({ message: `Customer ${name} has been archived.` });
+    }
+  } catch (error) {
+    console.error(`API Error in DELETE /api/customers/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to archive the customer.' });
+  }
+});
 
 // =======================================================
 //  API ENDPOINT FOR EXPENSES
