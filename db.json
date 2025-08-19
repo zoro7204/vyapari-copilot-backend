@@ -1,24 +1,718 @@
 {
   "transactions": [
     {
-  "id": "2025-05-10T10:00:00.000Z",
-  "orderId": "ORD-OLD",
-  "type": "Sale",
-  "item": "vintage shirt",
-  "qty": 1,
-  "rate": 1500,
-  "grossAmount": 1500,
-  "discount": 0,
-  "costPrice": 700,
-  "profit": 800,
-  "status": "completed",
-  "customerName": "Old Customer",
-  "customerPhone": "1234567890",
-  "entryBy": "Dashboard"
-},
+      "id": "2025-07-15T10:15:00.000Z",
+      "orderId": "ORD-001",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 2,
+          "price": 700,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 140,
+      "discountString": "10%",
+      "profit": 360,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-16T14:30:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-001",
+      "item": "Shop Cleaning Supplies",
+      "category": "supplies",
+      "amount": 750,
+      "entryBy": "Dashboard",
+      "date": "2025-07-16T14:30:00.000Z"
+    },
+    {
+      "id": "2025-07-17T18:05:00.000Z",
+      "orderId": "ORD-002",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 600,
+      "status": "Completed",
+      "customerName": "Priya Singh",
+      "customerPhone": "9876543211",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-18T11:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-002",
+      "item": "Lunch for staff",
+      "category": "food",
+      "amount": 450,
+      "entryBy": "Dashboard",
+      "date": "2025-07-18T11:00:00.000Z"
+    },
+    {
+      "id": "2025-07-19T12:20:00.000Z",
+      "orderId": "ORD-003",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 3,
+          "price": 850,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 2550,
+      "discount": 200,
+      "discountString": "200",
+      "profit": 400,
+      "status": "Completed",
+      "customerName": "Rohan Mehra",
+      "customerPhone": "9876543212",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-20T16:50:00.000Z",
+      "orderId": "ORD-004",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 750,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 750,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 300,
+      "status": "Completed",
+      "customerName": "Sneha Gupta",
+      "customerPhone": "9876543213",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-21T19:00:00.000Z",
+      "orderId": "ORD-005",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 2,
+          "price": 1300,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 2600,
+      "discount": 260,
+      "discountString": "10%",
+      "profit": 740,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-22T13:10:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-003",
+      "item": "Electricity Bill",
+      "category": "utilities",
+      "amount": 1200,
+      "entryBy": "Dashboard",
+      "date": "2025-07-22T13:10:00.000Z"
+    },
+    {
+      "id": "2025-07-23T11:00:00.000Z",
+      "orderId": "ORD-006",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 5,
+          "price": 700,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 3500,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 1250,
+      "status": "Confirmed",
+      "customerName": "Saketh",
+      "customerPhone": "9611709362",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-24T15:00:00.000Z",
+      "orderId": "ORD-007",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 1,
+          "price": 900,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 900,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 250,
+      "status": "Completed",
+      "customerName": "New Customer",
+      "customerPhone": "9999999999",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-25T16:00:00.000Z",
+      "orderId": "ORD-008",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 3,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 4200,
+      "discount": 500,
+      "discountString": "500",
+      "profit": 1300,
+      "status": "Completed",
+      "customerName": "Ravi",
+      "customerPhone": "7204850677",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-26T17:30:00.000Z",
+      "orderId": "ORD-009",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 4,
+          "price": 650,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 2600,
+      "discount": 500,
+      "discountString": "500",
+      "profit": 300,
+      "status": "Completed",
+      "customerName": "Rohan Mehra",
+      "customerPhone": "9876543212",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-27T10:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-004",
+      "item": "Tea & Snacks",
+      "category": "food",
+      "amount": 150,
+      "entryBy": "Dashboard",
+      "date": "2025-07-27T10:00:00.000Z"
+    },
+    {
+      "id": "2025-07-28T09:30:00.000Z",
+      "orderId": "ORD-010",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 2,
+          "price": 950,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1900,
+      "discount": 190,
+      "discountString": "10%",
+      "profit": 410,
+      "status": "Confirmed",
+      "customerName": "Somesh",
+      "customerPhone": "7845785689",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-29T14:00:00.000Z",
+      "orderId": "ORD-011",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1500,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1500,
+      "discount": 150,
+      "discountString": "10%",
+      "profit": 550,
+      "status": "Completed",
+      "customerName": "Priya Singh",
+      "customerPhone": "9876543211",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-30T11:45:00.000Z",
+      "orderId": "ORD-012",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 2,
+          "price": 800,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1600,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 300,
+      "status": "Completed",
+      "customerName": "Isha Verma",
+      "customerPhone": "9876543214",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-07-31T18:20:00.000Z",
+      "orderId": "ORD-013",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 800,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 800,
+      "discount": 50,
+      "discountString": "50",
+      "profit": 300,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-01T12:00:00.000Z",
+      "orderId": "ORD-014",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 280,
+      "discountString": "20%",
+      "profit": 320,
+      "status": "Completed",
+      "customerName": "Sangu",
+      "customerPhone": "7489897489",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-01T15:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-005",
+      "item": "Internet Bill",
+      "category": "utilities",
+      "amount": 600,
+      "entryBy": "Dashboard",
+      "date": "2025-08-01T15:00:00.000Z"
+    },
+    {
+      "id": "2025-08-02T12:05:00.000Z",
+      "orderId": "ORD-015",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 1000,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 1000,
+      "discount": 100,
+      "discountString": "10%",
+      "profit": 450,
+      "status": "Completed",
+      "customerName": "Sanju",
+      "customerPhone": "7204850697",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-03T10:30:00.000Z",
+      "orderId": "ORD-016",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 4,
+          "price": 900,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 3600,
+      "discount": 360,
+      "discountString": "10%",
+      "profit": 640,
+      "status": "Confirmed",
+      "customerName": "Veeresh",
+      "customerPhone": "929170184",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-04T11:00:00.000Z",
+      "orderId": "ORD-017",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 2,
+          "price": 1350,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 2700,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 1100,
+      "status": "Completed",
+      "customerName": "Ramesh",
+      "customerPhone": "7845784589",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-05T14:00:00.000Z",
+      "orderId": "ORD-018",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 600,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 600,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 150,
+      "status": "Completed",
+      "customerName": "Ravi",
+      "customerPhone": "7204850677",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-06T17:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-006",
+      "item": "Packaging material",
+      "category": "supplies",
+      "amount": 500,
+      "entryBy": "Dashboard",
+      "date": "2025-08-06T17:00:00.000Z"
+    },
+    {
+      "id": "2025-08-07T11:15:00.000Z",
+      "orderId": "ORD-019",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 2,
+          "price": 880,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1760,
+      "discount": 176,
+      "discountString": "10%",
+      "profit": 284,
+      "status": "Confirmed",
+      "customerName": "Sai",
+      "customerPhone": "9856985698",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-08T18:00:00.000Z",
+      "orderId": "ORD-020",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1450,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1450,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 650,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-09T12:30:00.000Z",
+      "orderId": "ORD-021",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 3,
+          "price": 720,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 2160,
+      "discount": 200,
+      "discountString": "200",
+      "profit": 610,
+      "status": "Completed",
+      "customerName": "Rohan Mehra",
+      "customerPhone": "9876543212",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-10T16:45:00.000Z",
+      "orderId": "ORD-022",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 1,
+          "price": 990,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 990,
+      "discount": 99,
+      "discountString": "10%",
+      "profit": 241,
+      "status": "Completed",
+      "customerName": "Sneha Gupta",
+      "customerPhone": "9876543213",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-11T10:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-007",
+      "item": "Marketing pamphlets",
+      "category": "marketing",
+      "amount": 1000,
+      "entryBy": "Dashboard",
+      "date": "2025-08-11T10:00:00.000Z"
+    },
+    {
+      "id": "2025-08-11T13:00:00.000Z",
+      "orderId": "ORD-023",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 2,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 2800,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 1200,
+      "status": "Completed",
+      "customerName": "Priya Singh",
+      "customerPhone": "9876543211",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-12T19:10:00.000Z",
+      "orderId": "ORD-024",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 700,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 700,
+      "discount": 70,
+      "discountString": "10%",
+      "profit": 180,
+      "status": "Completed",
+      "customerName": "Isha Verma",
+      "customerPhone": "9876543214",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-13T11:50:00.000Z",
+      "orderId": "ORD-025",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 3,
+          "price": 820,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 2460,
+      "discount": 246,
+      "discountString": "10%",
+      "profit": 264,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-13T14:00:00.000Z",
+      "type": "Expense",
+      "expenseId": "EXP-008",
+      "item": "Repair work",
+      "category": "maintenance",
+      "amount": 800,
+      "entryBy": "Dashboard",
+      "date": "2025-08-13T14:00:00.000Z"
+    },
+    {
+      "id": "2025-08-14T16:20:00.000Z",
+      "orderId": "ORD-026",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1550,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1550,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 750,
+      "status": "Completed",
+      "customerName": "Rohan Mehra",
+      "customerPhone": "9876543212",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-14T18:00:00.000Z",
+      "orderId": "ORD-027",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 2,
+          "price": 750,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 1500,
+      "discount": 150,
+      "discountString": "10%",
+      "profit": 450,
+      "status": "Completed",
+      "customerName": "Sneha Gupta",
+      "customerPhone": "9876543213",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-15T12:00:00.000Z",
+      "orderId": "ORD-028",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 1,
+          "price": 1100,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1100,
+      "discount": 110,
+      "discountString": "10%",
+      "profit": 340,
+      "status": "Completed",
+      "customerName": "Priya Singh",
+      "customerPhone": "9876543211",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-15T17:00:00.000Z",
+      "orderId": "ORD-029",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1600,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1600,
+      "discount": 320,
+      "discountString": "20%",
+      "profit": 480,
+      "status": "Completed",
+      "customerName": "Arjun Kumar",
+      "customerPhone": "9876543210",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-15T19:30:00.000Z",
+      "orderId": "ORD-030",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 2,
+          "price": 680,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 1360,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 460,
+      "status": "Completed",
+      "customerName": "Rohan Mehra",
+      "customerPhone": "9876543212",
+      "entryBy": "Dashboard"
+    },
     {
       "id": "2025-08-16T09:37:19.396Z",
-      "orderId": "ORD-001",
+      "orderId": "ORD-031",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 1,
@@ -35,7 +729,7 @@
     },
     {
       "id": "2025-08-16T11:26:44.875Z",
-      "orderId": "ORD-002",
+      "orderId": "ORD-032",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 1,
@@ -52,7 +746,7 @@
     },
     {
       "id": "2025-08-16T11:29:15.770Z",
-      "orderId": "ORD-003",
+      "orderId": "ORD-033",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 2,
@@ -69,7 +763,7 @@
     },
     {
       "id": "2025-08-16T12:25:58.888Z",
-      "orderId": "ORD-004",
+      "orderId": "ORD-034",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 2,
@@ -94,7 +788,7 @@
     {
       "id": "2025-08-17T17:22:09+05:30",
       "type": "Expense",
-      "expenseId": "EXP-001",
+      "expenseId": "EXP-009",
       "item": "pizza",
       "category": "food",
       "amount": 400,
@@ -104,7 +798,7 @@
     {
       "id": "2025-08-17T17:25:15+05:30",
       "type": "Expense",
-      "expenseId": "EXP-003",
+      "expenseId": "EXP-010",
       "item": "agarbati",
       "category": "pooja",
       "amount": 120,
@@ -114,7 +808,7 @@
     {
       "id": "2025-08-17T17:25:39+05:30",
       "type": "Expense",
-      "expenseId": "EXP-004",
+      "expenseId": "EXP-011",
       "item": "biscuit",
       "category": "food",
       "amount": 210,
@@ -124,7 +818,7 @@
     {
       "id": "2025-08-17T17:52:11+05:30",
       "type": "Expense",
-      "expenseId": "EXP-005",
+      "expenseId": "EXP-012",
       "item": "burger",
       "category": "food",
       "amount": 300,
@@ -132,19 +826,9 @@
       "entryBy": "Dashboard"
     },
     {
-      "id": "2025-08-17T18:01:56+05:30",
-      "type": "Expense",
-      "expenseId": "EXP-006",
-      "item": "birYani",
-      "category": "food",
-      "amount": 560,
-      "date": "2025-08-17T12:31:56.678Z",
-      "entryBy": "Dashboard"
-    },
-    {
       "id": "2025-08-17T18:04:03+05:30",
       "type": "Expense",
-      "expenseId": "EXP-007",
+      "expenseId": "EXP-014",
       "item": "SHOP RENT",
       "category": "rent",
       "amount": 2000,
@@ -153,7 +837,7 @@
     },
     {
       "id": "2025-08-17T19:00:25+05:30",
-      "orderId": "ORD-005",
+      "orderId": "ORD-035",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 1,
@@ -170,7 +854,7 @@
     },
     {
       "id": "2025-08-17T19:58:37+05:30",
-      "orderId": "ORD-006",
+      "orderId": "ORD-036",
       "type": "Sale",
       "item": "cotton kurta",
       "qty": 1,
@@ -187,7 +871,7 @@
     },
     {
       "id": "2025-08-17T20:18:58+05:30",
-      "orderId": "ORD-007",
+      "orderId": "ORD-037",
       "type": "Sale",
       "item": "denim jeans",
       "qty": 5,
@@ -204,7 +888,7 @@
     },
     {
       "id": "2025-08-17T22:54:40+05:30",
-      "orderId": "ORD-008",
+      "orderId": "ORD-038",
       "type": "Sale",
       "item": "cotton kurta",
       "qty": 3,
@@ -221,7 +905,7 @@
     },
     {
       "id": "2025-08-17T22:57:25+05:30",
-      "orderId": "ORD-010",
+      "orderId": "ORD-039",
       "type": "Sale",
       "item": "polo shirt",
       "qty": 1,
@@ -238,7 +922,7 @@
     },
     {
       "id": "2025-08-18T16:32:14+05:30",
-      "orderId": "ORD-011",
+      "orderId": "ORD-040",
       "type": "Sale",
       "item": "polo shirt",
       "qty": 1,
@@ -255,7 +939,7 @@
     },
     {
       "id": "2025-08-18T16:32:54+05:30",
-      "orderId": "ORD-012",
+      "orderId": "ORD-041",
       "type": "Sale",
       "item": "cotton kurta",
       "qty": 1,
@@ -277,7 +961,174 @@
       "name": "saketh",
       "phone": "9611709362",
       "status": "Archived"
+    },
+    {
+      "id": "2025-08-19T06:06:28.953Z",
+      "type": "Expense",
+      "expenseId": "EXP-016",
+      "item": "idli",
+      "category": "food",
+      "amount": 80,
+      "date": "2025-08-19T06:06:28.949Z",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T11:26:10.163Z",
+      "orderId": "ORD-043",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 280,
+      "discountString": "20%",
+      "profit": 320,
+      "status": "Confirmed",
+      "customerName": "sangu",
+      "customerPhone": "7489897489",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T17:07:37.715Z",
+      "orderId": "ORD-044",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 1,
+          "price": 1000,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1000,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 350,
+      "status": "Confirmed",
+      "customerName": "santosh",
+      "customerPhone": "7897897897",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T18:02:02.024Z",
+      "type": "Customer",
+      "customerId": "CUST-001",
+      "name": "revan sidda",
+      "phone": "7412369852",
+      "status": "Active"
+    },
+    {
+      "id": "2025-08-19T18:02:48.731Z",
+      "type": "Customer",
+      "customerId": null,
+      "name": "new customer",
+      "phone": "9999999999",
+      "status": "Archived"
+    },
+    {
+      "id": "2025-08-19T18:06:19.052Z",
+      "orderId": "ORD-045",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "vintage scarf",
+          "qty": 3,
+          "price": 800,
+          "costAtSale": 500
+        }
+      ],
+      "grossAmount": 2400,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 900,
+      "status": "Confirmed",
+      "customerName": "ganesh",
+      "customerPhone": "7845789645",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T18:09:10.948Z",
+      "orderId": "ORD-046",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans ",
+          "qty": 2,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 2800,
+      "discount": 560,
+      "discountString": "20%",
+      "profit": 640,
+      "status": "Confirmed",
+      "customerName": "raju",
+      "customerPhone": "7463145263",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T18:10:19.486Z",
+      "type": "Expense",
+      "expenseId": "EXP-017",
+      "item": "biriyani",
+      "category": "food",
+      "amount": 200,
+      "date": "2025-08-19T18:10:19.484Z",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-19T18:57:42.767Z",
+      "orderId": "ORD-047",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "polo shirt",
+          "qty": 1,
+          "price": 1000,
+          "costAtSale": 450
+        }
+      ],
+      "grossAmount": 1000,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 550,
+      "status": "Confirmed",
+      "customerName": "saroj",
+      "customerPhone": "7485789612",
+      "entryBy": "Dashboard"
     }
-  ]
+  ],
+  "dailySales": [
+    {
+      "date": "2025-08-19",
+      "revenue": 6760,
+      "cogs": 4550,
+      "grossProfit": 2210,
+      "orders": 4
+    },
+    {
+      "date": "2025-08-20",
+      "revenue": 1000,
+      "cogs": 450,
+      "grossProfit": 550,
+      "orders": 1
+    }
+  ],
+  "dailyExpenses": [
+    {
+      "date": "2025-08-19",
+      "amount": 280
+    },
+    {
+      "date": "2025-08-20",
+      "amount": 0
+    }
+  ],
+  "itemSalesDaily": []
 }
-

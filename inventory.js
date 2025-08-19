@@ -158,3 +158,52 @@ async function getLowStockItems() {
 
 // --- UPDATED EXPORTS ---
 module.exports = { updateStock, processInventoryFile, syncInventoryFromCSV, getItemDetails, getLowStockItems };
+
+async function getDeadStockItems(saleTransactions) {
+  // 1. Get all sales from the last 30 days
+  const now = new Date();
+  const thirtyDaysAgo = new Date();
+  thirtyDaysAgo.setDate(now.getDate() - 30);
+  
+  const recentSales = saleTransactions.filter(tx => new Date(tx.id) >= thirtyDaysAgo);
+
+  // 2. Create a list of items that HAVE sold recently
+  const recentlySoldItems = new Set();
+  recentSales.forEach(sale => {
+      const itemName = sale.items?.[0]?.name || sale.item;
+      if (itemName) {
+          recentlySoldItems.add(itemName.trim().toLowerCase());
+      }
+  });
+
+  // 3. Get all items from your master inventory in Firestore
+  const inventorySnapshot = await db.collection('inventory').get();
+  if (inventorySnapshot.empty) {
+    return []; // Return empty if no inventory exists
+  }
+  
+  // 4. Compare the lists to find what HASN'T sold
+  const deadStock = [];
+  inventorySnapshot.docs.forEach(doc => {
+      const itemData = doc.data();
+      const itemName = itemData.itemName;
+      if (itemName && !recentlySoldItems.has(itemName.trim().toLowerCase())) {
+          deadStock.push({
+              id: doc.id,
+              ...itemData
+          });
+      }
+  });
+
+  return deadStock;
+}
+
+// At the bottom of inventory.js, update your module.exports
+module.exports = { 
+  updateStock, 
+  processInventoryFile, 
+  syncInventoryFromCSV, 
+  getItemDetails, 
+  getLowStockItems,
+  getDeadStockItems // <-- Add this new function
+};

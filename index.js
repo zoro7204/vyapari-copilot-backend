@@ -111,93 +111,511 @@ function calculateDiscount(totalPrice, discountValue) {
 app.use('/api/auth', authRoutes);
 
 // =======================================================
-//  API ENDPOINT FOR THE WEB DASHBOARD (Upgraded for Replit DB)
+//  HELPER FUNCTION FOR DASHBOARD ANALYTICS (FINAL POLISHED VERSION)
 // =======================================================
-app.get('/api/summary', async (req, res) => {
-  try {
-    console.log('API call received: /api/summary');
-    const dateArg = req.query.date || 'today';
-
-    // --- Date logic (unchanged) ---
-    let targetDate;
-    const now = moment().tz("Asia/Kolkata");
-
-    if (dateArg === 'today') {
-        targetDate = now;
-    } else if (dateArg === 'yesterday') {
-        targetDate = now.subtract(1, 'days');
-    } else {
-        targetDate = moment.tz(dateArg, "YYYY-MM-DD", "Asia/Kolkata");
-    }
-
-    if (!targetDate.isValid()) {
-      return res.status(400).json({ error: "Invalid date format." });
-    }
-    const targetDateString = targetDate.format('YYYY-MM-DD');
-
-    // --- THE FIX: Get data from our new database ---
+async function getDashboardData(period = 'all') {
     const allTransactions = await getAllTransactions();
+    const saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
+    const expenseTransactions = allTransactions.filter(tx => tx.type === 'Expense');
 
-    let totalSales = 0;
-    let totalExpenses = 0;
+    const now = new Date();
+    let currentStartDate, currentEndDate, previousStartDate, previousEndDate;
 
-    // --- Loop through transaction objects ---
-    for (const tx of allTransactions) {
-      // The transaction ID is the ISO timestamp string, which starts with YYYY-MM-DD
-      if (tx.id.startsWith(targetDateString)) {
-        if (tx.type === 'Sale') {
-          // Use properties from the transaction object
-          totalSales += (tx.grossAmount - tx.discount);
-        } else if (tx.type === 'Expense') {
-          // Expenses have a 'total' property
-          totalExpenses += tx.total || 0;
-        }
-      }
+    if (period === 'today') {
+        currentStartDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        currentEndDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+        previousStartDate = new Date(new Date(currentStartDate).setDate(currentStartDate.getDate() - 1));
+        previousEndDate = currentStartDate;
+    } else if (period === 'yesterday') {
+        // --- THIS SECTION IS NOW FIXED ---
+        currentStartDate = new Date(new Date().setDate(now.getDate() - 1));
+        currentStartDate.setHours(0, 0, 0, 0);
+        currentEndDate = new Date(new Date(currentStartDate).setDate(currentStartDate.getDate() + 1));
+        
+        const dayBeforeYesterday = new Date(new Date().setDate(now.getDate() - 2));
+        dayBeforeYesterday.setHours(0, 0, 0, 0);
+        previousStartDate = dayBeforeYesterday;
+        previousEndDate = currentStartDate;
+    } else if (period === 'week') {
+        const dayOfWeek = now.getDay();
+        currentStartDate = new Date(new Date().setDate(now.getDate() - dayOfWeek));
+        currentStartDate.setHours(0, 0, 0, 0);
+        currentEndDate = new Date(new Date(currentStartDate).setDate(currentStartDate.getDate() + 7));
+        previousStartDate = new Date(new Date(currentStartDate).setDate(currentStartDate.getDate() - 7));
+        previousEndDate = currentStartDate;
+    } else if (period === 'month') {
+        currentStartDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        currentEndDate = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        previousStartDate = new Date(new Date(currentStartDate).setMonth(currentStartDate.getMonth() - 1));
+        previousEndDate = currentStartDate;
+    } else { // 'all'
+        currentStartDate = null;
+        currentEndDate = null;
+        previousStartDate = null;
+        previousEndDate = null;
     }
 
-    const profit = totalSales - totalExpenses;
-    const jsonData = { totalSales, totalExpenses, profit };
+    const filterByDate = (transactions, start, end) => {
+        if (!start || !end) return transactions;
+        return transactions.filter(tx => new Date(tx.id) >= start && new Date(tx.id) < end);
+    };
 
-    console.log('Sending summary data to dashboard:', jsonData);
-    res.json(jsonData);
+    const currentSales = filterByDate(saleTransactions, currentStartDate, currentEndDate);
+    const previousSales = filterByDate(saleTransactions, previousStartDate, previousEndDate);
+    const currentExpenses = filterByDate(expenseTransactions, currentStartDate, currentEndDate);
+    const previousExpenses = filterByDate(expenseTransactions, previousStartDate, previousEndDate);
 
+    const calculateMetrics = (sales, expenses) => {
+        const totalRevenue = sales.reduce((sum, sale) => sum + (sale.grossAmount || 0) - (sale.discount || 0), 0);
+        const totalCost = sales.reduce((sum, sale) => {
+            const firstItem = sale.items && sale.items[0] ? sale.items[0] : {};
+            const itemCost = firstItem.costAtSale ? firstItem.costAtSale * (firstItem.qty || 1) : (sale.costPrice || 0);
+            return sum + itemCost;
+        }, 0);
+        const totalExpenses = expenses.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+        const netProfit = totalRevenue - totalCost - totalExpenses;
+        const totalOrders = sales.length;
+        const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
+        const newCustomers = new Set(sales.filter(s => s.customerName).map(s => `${s.customerName.toLowerCase().trim()}:${s.customerPhone.replace(/\D/g, '')}`)).size;
+        const grossMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue) * 100 : 0;
+        return { totalRevenue, netProfit, totalExpenses, totalOrders, averageOrderValue, newCustomers, grossMargin };
+    };
+
+    const currentMetrics = calculateMetrics(currentSales, currentExpenses);
+    const previousMetrics = calculateMetrics(previousSales, previousExpenses);
+
+    const getChange = (current, previous) => {
+        if (previous === 0) return current > 0 ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+    };
+
+    // --- Financial Performance Chart Data (Gemini Blueprint Version) ---
+    // --- Financial Performance Chart Data (UPGRADED with Hourly View) ---
+  const financialPerformanceData = () => {
+      const dataMap = new Map();
+      const salesToChart = (period === 'today' || period === 'yesterday') ? currentSales : saleTransactions;
+      const expensesToChart = (period === 'today' || period === 'yesterday') ? currentExpenses : expenseTransactions;
+
+      // --- NEW: HOURLY LOGIC ---
+      if (period === 'today' || period === 'yesterday') {
+          // Create 24 hours in the map, from 0 to 23
+          for (let i = 0; i < 24; i++) {
+              dataMap.set(i, { revenue: null, expenses: null, netProfit: null });
+          }
+
+          salesToChart.forEach(sale => {
+              const hour = new Date(sale.id).getHours();
+              const day = dataMap.get(hour);
+              const saleRevenue = (sale.grossAmount || 0) - (sale.discount || 0);
+              const firstItem = sale.items && sale.items[0] ? sale.items[0] : {};
+              const costOfGoods = firstItem.costAtSale ? firstItem.costAtSale * (firstItem.qty || 1) : (sale.costPrice || 0);
+              const saleProfit = saleRevenue - costOfGoods;
+              day.revenue = (day.revenue || 0) + saleRevenue;
+              day.netProfit = (day.netProfit || 0) + saleProfit;
+          });
+
+          expensesToChart.forEach(expense => {
+              const hour = new Date(expense.id).getHours();
+              const day = dataMap.get(hour);
+              const expenseAmount = expense.amount || 0;
+              day.expenses = (day.expenses || 0) + expenseAmount;
+              day.netProfit = (day.netProfit || 0) - expenseAmount;
+          });
+
+          // Format for the chart, only including hours with activity
+          return Array.from(dataMap.entries())
+              .filter(([hour, values]) => values.revenue !== null || values.expenses !== null)
+              .map(([hour, values]) => ({
+                  period: `${hour}:00`, // Format as "9:00", "14:00", etc.
+                  ...values 
+              }));
+      }
+
+      // --- DAILY LOGIC (for week, month, all) ---
+      // This part remains the same
+      [...salesToChart, ...expensesToChart].forEach(tx => {
+          const date = new Date(tx.id).toISOString().split('T')[0];
+          if (!dataMap.has(date)) {
+              dataMap.set(date, { revenue: null, expenses: null, netProfit: null });
+          }
+      });
+      salesToChart.forEach(sale => {
+          const date = new Date(sale.id).toISOString().split('T')[0];
+          const day = dataMap.get(date);
+          const saleRevenue = (sale.grossAmount || 0) - (sale.discount || 0);
+          const firstItem = sale.items && sale.items[0] ? sale.items[0] : {};
+          const costOfGoods = firstItem.costAtSale ? firstItem.costAtSale * (firstItem.qty || 1) : (sale.costPrice || 0);
+          const saleProfit = saleRevenue - costOfGoods;
+          day.revenue = (day.revenue || 0) + saleRevenue;
+          day.netProfit = (day.netProfit || 0) + saleProfit;
+      });
+      expensesToChart.forEach(expense => {
+          const date = new Date(expense.id).toISOString().split('T')[0];
+          const day = dataMap.get(date);
+          const expenseAmount = expense.amount || 0;
+          day.expenses = (day.expenses || 0) + expenseAmount;
+          day.netProfit = (day.netProfit || 0) - expenseAmount;
+      });
+      return Array.from(dataMap.entries())
+          .map(([period, values]) => ({ period, ...values }))
+          .sort((a, b) => new Date(a.period) - new Date(b.period));
+  };
+
+    // --- Top Selling Products ---
+    const topProducts = [...currentSales.reduce((map, sale) => {
+        let name = "unknown";
+        let displayName = "Unknown";
+        let qty = 0;
+
+        // Prioritize the new data format
+        if (sale.items && sale.items[0] && sale.items[0].name) {
+            name = sale.items[0].name.trim().toLowerCase();
+            displayName = sale.items[0].name.trim();
+            qty = sale.items[0].qty || 1;
+        } 
+        // Fallback to the old data format
+        else if (sale.item) {
+            name = sale.item.trim().toLowerCase();
+            displayName = sale.item.trim();
+            qty = sale.qty || 1;
+        }
+
+        if (name !== "unknown") {
+            const revenue = (sale.grossAmount || 0) - (sale.discount || 0);
+            const existing = map.get(name) || { name: displayName, quantity: 0, revenue: 0 };
+            existing.quantity += qty;
+            existing.revenue += revenue;
+            map.set(name, existing);
+        }
+        return map;
+    }, new Map()).values()].sort((a,b) => b.revenue - a.revenue).slice(0, 5);
+
+    // --- Actionable Modules ---
+    const recentOrders = saleTransactions.sort((a, b) => new Date(b.id) - new Date(a.id)).slice(0, 5).map(o => {
+        const firstItem = o.items && o.items[0] ? o.items[0] : {};
+        return {
+            id: o.orderId,
+            customerName: o.customerName,
+            customerPhone: o.customerPhone,
+            totalAmount: (o.grossAmount || 0) - (o.discount || 0),
+            status: o.status,
+            orderDate: o.id,
+            items: o.items || [{ name: o.item, quantity: o.qty, price: o.rate }],
+            // ADD THE MISSING PROPERTIES BELOW
+            grossAmount: o.grossAmount,
+            discount: o.discount,
+            discountString: o.discountString,
+            costPrice: firstItem.costAtSale ? firstItem.costAtSale * (firstItem.qty || 1) : (o.costPrice || 0),
+            profit: o.profit
+        };
+    });
+    // =======================================================
+    //  DYNAMIC CUSTOMER SPOTLIGHT LOGIC (SAFER V3)
+    // =======================================================
+    let customerSpotlight = { name: "N/A", spend: 0, title: "Top Customer" };
+
+    if (currentSales.length > 0) {
+        // --- Aggregate all customer data first ---
+        const customerData = new Map();
+        currentSales.forEach(sale => {
+            if (sale.customerName && sale.customerPhone) {
+                const key = `${sale.customerName.trim().toLowerCase()}:${sale.customerPhone.replace(/\D/g, '')}`;
+                const displayName = sale.customerName.trim();
+                const amount = (sale.grossAmount || 0) - (sale.discount || 0);
+                const existing = customerData.get(key) || { name: displayName, totalSpend: 0, orderCount: 0, lastPurchase: new Date(0) };
+                existing.totalSpend += amount;
+                existing.orderCount += 1;
+                const saleDate = new Date(sale.id);
+                if (saleDate > existing.lastPurchase) {
+                    existing.lastPurchase = saleDate;
+                }
+                customerData.set(key, existing);
+            }
+        });
+        const allCustomers = [...customerData.values()];
+
+        // --- Determine which spotlight to show ---
+        const dayOfWeek = new Date().getDay();
+
+        if (dayOfWeek >= 1 && dayOfWeek <= 3) { // Monday, Tuesday, Wednesday
+            const spenders = allCustomers.sort((a, b) => b.totalSpend - a.totalSpend);
+            // --- SAFETY CHECK ---
+            if (spenders.length > 0) {
+                customerSpotlight = { name: spenders[0].name, spend: spenders[0].totalSpend, title: `Top Spender` };
+            }
+        } else if (dayOfWeek >= 4 && dayOfWeek <= 5) { // Thursday, Friday
+            const frequentBuyers = allCustomers.sort((a, b) => b.orderCount - a.orderCount);
+            // --- SAFETY CHECK ---
+            if (frequentBuyers.length > 0) {
+                customerSpotlight = { name: frequentBuyers[0].name, spend: frequentBuyers[0].totalSpend, title: `Most Frequent Buyer` };
+            }
+        } else { // Weekend
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(new Date().getDate() - 30);
+            const spenders = allCustomers.sort((a, b) => b.totalSpend - a.totalSpend);
+            const vipThreshold = spenders.length > 3 ? spenders[Math.floor(spenders.length / 4)].totalSpend : 0;
+            const atRiskVips = spenders.filter(c => c.totalSpend >= vipThreshold && c.lastPurchase < thirtyDaysAgo);
+            
+            // --- SAFETY CHECK ---
+            if (atRiskVips.length > 0) {
+                customerSpotlight = { name: atRiskVips[0].name, spend: atRiskVips[0].totalSpend, title: `At-Risk VIP` };
+            } else if (spenders.length > 0) { // Fallback to top spender
+                customerSpotlight = { name: spenders[0].name, spend: spenders[0].totalSpend, title: `Top Spender` };
+            }
+        }
+    }
+    
+    const lowStockItems = await getLowStockItems();
+
+    // --- NEW: Opportunities & Risks Module Logic ---
+    const opportunitiesAndRisks = [];
+
+    // --- Helper for dynamic period text ---
+    let previousPeriodText = 'the previous period';
+    if (period === 'today') previousPeriodText = 'yesterday';
+    if (period === 'yesterday') previousPeriodText = 'the day before';
+    if (period === 'week') previousPeriodText = 'last week';
+    if (period === 'month') previousPeriodText = 'last month';
+
+    // ALERT 1: Low Stock (Existing)
+    if (lowStockItems && !lowStockItems.startsWith('✅')) {
+        opportunitiesAndRisks.push({
+            id: 'risk-low-stock',
+            type: 'risk',
+            severity: 'critical',
+            message: `Low stock detected. Check inventory.`
+        });
+    }
+
+    // ALERT 2 & 3: Revenue Trend (Up and Down)
+    const revenueChange = getChange(currentMetrics.totalRevenue, previousMetrics.totalRevenue);
+    if (revenueChange > 10) {
+        opportunitiesAndRisks.push({
+            id: 'opp-revenue-up', type: 'opportunity', severity: 'info',
+            message: `Revenue is up ${revenueChange.toFixed(0)}% vs. ${previousPeriodText}!`
+        });
+    } else if (revenueChange < -10) { // <-- Revenue Down Logic
+        opportunitiesAndRisks.push({
+            id: 'risk-revenue-down', type: 'risk', severity: 'warning',
+            message: `Revenue is down ${Math.abs(revenueChange).toFixed(0)}% vs. ${previousPeriodText}.`
+        });
+    }
+    
+    // ALERT 4: Dead Stock (NEW)
+    if (period === 'month' || period === 'all') {
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(now.getDate() - 30);
+        
+        const recentSales = saleTransactions.filter(tx => new Date(tx.id) >= thirtyDaysAgo);
+
+        // This part is now much safer and handles missing data
+        const recentlySoldItems = new Set();
+        recentSales.forEach(sale => {
+            const itemName = sale.items?.[0]?.name; // Safely access the name
+            if (itemName) {
+                recentlySoldItems.add(itemName.trim().toLowerCase());
+            } else if (sale.item) { // Fallback for very old data
+                recentlySoldItems.add(sale.item.trim().toLowerCase());
+            }
+        });
+
+        const inventorySnapshot = await db.collection('inventory').get();
+        inventorySnapshot.docs.forEach(doc => {
+            const itemName = doc.data().itemName;
+            if (itemName && !recentlySoldItems.has(itemName.trim().toLowerCase())) {
+                opportunitiesAndRisks.push({
+                    id: `risk-dead-stock-${itemName}`,
+                    type: 'risk',
+                    severity: 'warning',
+                    message: `Dead Stock: The item "${itemName}" has not sold in over 30 days.`
+                });
+            }
+        });
+    }
+
+    // --- Assemble Final JSON Object ---
+    return {
+        kpis: {
+            totalRevenue: { value: currentMetrics.totalRevenue, change: getChange(currentMetrics.totalRevenue, previousMetrics.totalRevenue) },
+            netProfit: { value: currentMetrics.netProfit, change: getChange(currentMetrics.netProfit, previousMetrics.netProfit) },
+            grossMargin: { value: currentMetrics.grossMargin, change: getChange(currentMetrics.grossMargin, previousMetrics.grossMargin) },
+            totalExpenses: { value: currentMetrics.totalExpenses, change: getChange(currentMetrics.totalExpenses, previousMetrics.totalExpenses) },
+            totalOrders: { value: currentMetrics.totalOrders, change: getChange(currentMetrics.totalOrders, previousMetrics.totalOrders) },
+            averageOrderValue: { value: currentMetrics.averageOrderValue, change: getChange(currentMetrics.averageOrderValue, previousMetrics.averageOrderValue) },
+            newCustomers: { value: currentMetrics.newCustomers, change: getChange(currentMetrics.newCustomers, previousMetrics.newCustomers) },
+        },
+        charts: {
+            financialPerformance: financialPerformanceData(),
+            topProducts: topProducts
+        },
+        modules: {
+            recentOrders: recentOrders,
+            opportunitiesAndRisks: opportunitiesAndRisks,
+            customerSpotlight: customerSpotlight
+        }
+    };
+}
+
+// =======================================================
+//  API ENDPOINT FOR THE WEB DASHBOARD
+// =======================================================
+app.get('/api/dashboard', async (req, res) => {
+  try {
+    const period = req.query.period || 'month'; // Default to 'month'
+    const dashboardData = await getDashboardData(period);
+    res.json(dashboardData);
   } catch (error) {
-    console.error('API Error in /api/summary:', error);
-    res.status(500).json({ error: 'Failed to retrieve summary data.' });
+    console.error('API Error in /api/dashboard:', error);
+    res.status(500).json({ error: 'Failed to retrieve dashboard data.' });
   }
 });
+
 // =======================================================
-//  API ENDPOINT FOR ORDERS (Upgraded for Replit DB)
+//  API ENDPOINT FOR INVENTORY
+// =======================================================
+app.get('/api/inventory', async (req, res) => {
+  try {
+    const inventorySnapshot = await db.collection('inventory').get();
+    
+    if (inventorySnapshot.empty) {
+      return res.json([]); // Return an empty array if there's no inventory
+    }
+    
+    const inventoryList = inventorySnapshot.docs.map(doc => ({
+      id: doc.id, // The unique ID from Firestore
+      ...doc.data()
+    }));
+
+    console.log(`Found and sending ${inventoryList.length} inventory items.`);
+    res.json(inventoryList);
+
+  } catch (error) {
+    console.error('API Error in /api/inventory:', error);
+    res.status(500).json({ error: 'Failed to fetch inventory data.' });
+  }
+});
+
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' }); // Temp folder for uploads
+
+// CREATE a new inventory item
+app.post('/api/inventory', async (req, res) => {
+  try {
+    const newItemData = req.body;
+    if (!newItemData.itemName || !newItemData.quantity || !newItemData.costPrice || !newItemData.sellingPrice) {
+      return res.status(400).json({ error: 'Missing required fields.' });
+    }
+    const docRef = await db.collection('inventory').add(newItemData);
+    res.status(201).json({ id: docRef.id, ...newItemData });
+  } catch (error) {
+    console.error('API Error in POST /api/inventory:', error);
+    res.status(500).json({ error: 'Failed to create inventory item.' });
+  }
+});
+
+// UPDATE an existing inventory item
+app.patch('/api/inventory/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updatedData = req.body;
+    await db.collection('inventory').doc(id).update(updatedData);
+    res.status(200).json({ message: `Item ${id} updated successfully.` });
+  } catch (error) {
+    console.error(`API Error in PATCH /api/inventory/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to update inventory item.' });
+  }
+});
+
+// DELETE an inventory item
+app.delete('/api/inventory/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await db.collection('inventory').doc(id).delete();
+    res.status(200).json({ message: `Item ${id} deleted successfully.` });
+  } catch (error) {
+    console.error(`API Error in DELETE /api/inventory/${req.params.id}:`, error);
+    res.status(500).json({ error: 'Failed to delete inventory item.' });
+  }
+});
+
+// DOWNLOAD inventory as CSV
+app.get('/api/inventory/csv', async (req, res) => {
+    try {
+        const inventorySnapshot = await db.collection('inventory').get();
+        const inventoryList = inventorySnapshot.docs.map(doc => doc.data());
+        
+        if (inventoryList.length === 0) {
+            return res.status(404).send('No inventory items to export.');
+        }
+
+        const csv = Papa.unparse(inventoryList);
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', 'attachment; filename="inventory.csv"');
+        res.status(200).send(csv);
+    } catch (error) {
+        console.error('API Error in /api/inventory/csv:', error);
+        res.status(500).json({ error: 'Failed to generate inventory CSV.' });
+    }
+});
+
+// UPLOAD inventory via CSV
+app.post('/api/inventory/upload', upload.single('inventoryFile'), async (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded.' });
+        }
+        
+        const csvFile = fs.readFileSync(req.file.path, 'utf8');
+        const parseResult = Papa.parse(csvFile, { header: true, skipEmptyLines: true });
+        const inventoryData = parseResult.data;
+
+        // Reuse our existing robust sync function
+        const syncResult = await syncInventoryFromCSV(inventoryData);
+        
+        fs.unlinkSync(req.file.path); // Clean up the temporary file
+
+        res.status(200).json({ message: `${syncResult.count} items synced successfully.` });
+    } catch (error) {
+        console.error('API Error in /api/inventory/upload:', error);
+        res.status(500).json({ error: 'Failed to process CSV file.' });
+    }
+});
+
+// =======================================================
+//  API ENDPOINT FOR ORDERS (UPGRADED to read new format)
 // =======================================================
 app.get('/api/orders', async (req, res) => {
   try {
     console.log('API call received: /api/orders');
-
-    // THE FIX 1: Get data from our new database
     const allTransactions = await getAllTransactions();
-
-    // Filter the results to only include 'Sale' transactions
     const saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
 
-    // THE FIX 2: Map transaction objects to the format the frontend needs
-    const orders = saleTransactions.map(tx => ({
-      id: tx.id,
-      orderId: tx.orderId,
-      rate: tx.rate, 
-      customer: {
-        name: tx.customerName || 'N/A',
-        phone: tx.customerPhone || 'N/A',
-      },
-      items: `${tx.qty} x ${tx.item}`,
-      grossAmount: tx.grossAmount || 0,
-      amount: (tx.grossAmount || 0) - (tx.discount || 0),
-      discount: tx.discount || 0,
-      discountString: tx.discountString || '',
-      costPrice: tx.costPrice || 0,
-      profit: tx.profit || 0,
-      status: tx.status || 'Confirmed',
-      date: tx.id.split('T')[0], // Get the date from the ISO timestamp ID
-    }));
+    // UPGRADED LOGIC STARTS HERE
+    const orders = saleTransactions.map(tx => {
+      // Safely access the first item in the array, if it exists
+      const firstItem = tx.items && tx.items[0] ? tx.items[0] : {};
+
+      return {
+        id: tx.id,
+        orderId: tx.orderId,
+        rate: firstItem.price || tx.rate, // Fallback to old format for compatibility
+        customer: {
+          name: tx.customerName || 'N/A',
+          phone: tx.customerPhone || 'N/A',
+        },
+        // Correctly read from the nested items array
+        items: `${firstItem.qty || tx.qty} x ${firstItem.name || tx.item}`,
+        grossAmount: tx.grossAmount || 0,
+        amount: (tx.grossAmount || 0) - (tx.discount || 0),
+        discount: tx.discount || 0,
+        discountString: tx.discountString || '',
+        // Correctly use the frozen cost from the item
+        costPrice: firstItem.costAtSale ? firstItem.costAtSale * (firstItem.qty || 1) : (tx.costPrice || 0),
+        profit: tx.profit || 0,
+        status: tx.status || 'Confirmed',
+        date: tx.id.split('T')[0],
+      }
+    });
 
     console.log(`Found and sending ${orders.length} orders.`);
     res.json(orders);
@@ -841,22 +1259,25 @@ app.post('/api/orders', async (req, res) => {
     const newOrderId = getNextOrderId(allSales);
 
     // --- Create the Transaction Object for Replit DB ---
-    const transactionData = {
-      orderId: newOrderId,
-      type: 'Sale',
-      item: orderDataFromForm.item,
-      qty: orderDataFromForm.qty,
-      rate: orderDataFromForm.rate,
-      grossAmount: originalTotalPrice,
-      discount: discountAmount,
-      discountString: discountStr,
-      costPrice: totalCostPrice,
-      profit: profit,
-      status: 'Confirmed',
-      customerName: orderDataFromForm.customerName || '',
-      customerPhone: orderDataFromForm.customerPhone || '',
-      entryBy: 'Dashboard'
-    };
+    // AFTER
+  const transactionData = {
+    orderId: newOrderId,
+    type: 'Sale',
+    items: [{
+      name: orderDataFromForm.item,
+      qty: parseInt(orderDataFromForm.qty, 10),
+      price: parseFloat(orderDataFromForm.rate),
+      costAtSale: itemDetails.costPrice // Freeze the cost
+    }],
+    grossAmount: originalTotalPrice,
+    discount: discountAmount,
+    discountString: discountStr,
+    profit: profit,
+    status: 'Confirmed',
+    customerName: orderDataFromForm.customerName || '',
+    customerPhone: orderDataFromForm.customerPhone || '',
+    entryBy: 'Dashboard'
+  };
 
     // 4. Append to the new database and update stock
     await appendTransaction(transactionData);
@@ -934,16 +1355,19 @@ app.patch('/api/orders/:id', async (req, res) => {
     // --- End Recalculation Logic ---
 
     // Merge all changes into a final, correct object
+    // AFTER
     const updatedTransaction = {
       ...existingTransaction,
-      ...updates, // Applies status, customerName, etc. from the form
-      item: newItemName,
-      qty: newQty,
-      rate: newRate,
+      ...updates, 
+      items: [{
+        name: newItemName,
+        qty: newQty,
+        price: newRate,
+        costAtSale: itemDetails.costPrice // Freeze the cost on update as well
+      }],
       grossAmount: newGrossAmount,
       discount: discountInfo.amount,
       discountString: newDiscountString,
-      costPrice: newTotalCostPrice,
       profit: newProfit
     };
 
@@ -1032,22 +1456,25 @@ app.post(`/webhook`, async (req, res) => {
 
       const discountInfo = calculateDiscount(parsedData.total, parsedData.discount);
 
-      const transactionData = {
-          type: 'Sale',
-          item: parsedData.item,
-          qty: parsedData.qty,
-          rate: parsedData.rate,
-          grossAmount: parsedData.total,
-          discount: discountInfo.amount,
-          discountString: parsedData.discount,
-          costPrice: itemDetails.costPrice * parsedData.qty,
-          profit: discountInfo.finalPrice - (itemDetails.costPrice * parsedData.qty),
-          status: 'Confirmed',
-          customerName: parsedData.customerName || '',
-          customerPhone: parsedData.customerPhone || '',
-          entryBy: entryBy
-      };
-
+      // AFTER
+    const transactionData = {
+      type: 'Sale',
+      // NEW: Items are now an array
+      items: [{
+        name: parsedData.item,
+        qty: parsedData.qty,
+        price: parsedData.rate,
+        costAtSale: itemDetails.costPrice // Freeze the cost at the time of sale
+        }],
+      grossAmount: parsedData.total,
+      discount: discountInfo.amount,
+      discountString: parsedData.discount,
+      profit: discountInfo.finalPrice - (itemDetails.costPrice * parsedData.qty),
+      status: 'Confirmed',
+      customerName: parsedData.customerName || '',
+      customerPhone: parsedData.customerPhone || '',
+      entryBy: entryBy
+    };
       await appendTransaction(transactionData);
       const stockResult = await updateStock(parsedData.item, parsedData.qty);
 

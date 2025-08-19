@@ -1,97 +1,160 @@
-// We are using lowdb, a simple local JSON file database
 const { JSONFilePreset } = require('lowdb/node');
 const moment = require('moment-timezone');
 
-// This is a global variable for our database connection
 let db;
 
-// This function initializes the database. We will call it when the server starts.
+// This function now initializes the new daily fact tables as well
+// REPLACE your existing initializeDb function with this
 async function initializeDb() {
-  // It will create a db.json file if it doesn't exist
-  // and set a default structure with an empty transactions array.
-  const defaultData = { transactions: [] };
+  const defaultData = { 
+    transactions: [],
+    dailySales: [],
+    dailyExpenses: [],
+    itemSalesDaily: []
+  };
   db = await JSONFilePreset('db.json', defaultData);
-  console.log('Local JSON DB initialized at db.json');
+  
+  // --- NEW: Migration logic to handle existing databases ---
+  // This ensures our new data arrays exist, even if loading an old db.json file
+  db.data.dailySales = db.data.dailySales || [];
+  db.data.dailyExpenses = db.data.dailyExpenses || [];
+  db.data.itemSalesDaily = db.data.itemSalesDaily || [];
+  
+  await db.write(); // Save the changes if any were made
+  // --- END OF NEW LOGIC ---
+
+  console.log('Local JSON DB initialized with Daily Facts tables.');
 }
 
-/**
- * Adds a new transaction record to the database.
- * Uses a timestamp as a unique ID.
- */
+// =======================================================
+//  NEW: THE DAILY FACTS CALCULATION ENGINE
+// =======================================================
+async function updateDailyFacts(date) {
+  await db.read();
+  const dateString = moment(date).tz("Asia/Kolkata").format('YYYY-MM-DD');
+
+  const salesForDay = db.data.transactions.filter(tx => 
+    tx.type === 'Sale' && 
+    moment(tx.id).tz("Asia/Kolkata").format('YYYY-MM-DD') === dateString
+  );
+
+  const expensesForDay = db.data.transactions.filter(tx =>
+    tx.type === 'Expense' &&
+    moment(tx.id).tz("Asia/Kolkata").format('YYYY-MM-DD') === dateString
+  );
+
+  // 1. Calculate Daily Sales
+  const totalRevenue = salesForDay.reduce((sum, sale) => sum + (sale.grossAmount || 0) - (sale.discount || 0), 0);
+  const totalCogs = salesForDay.reduce((sum, sale) => {
+    const itemsCogs = sale.items.reduce((itemSum, item) => itemSum + (item.costAtSale || 0) * item.qty, 0);
+    return sum + itemsCogs;
+  }, 0);
+
+  const dailySaleSummary = {
+    date: dateString,
+    revenue: totalRevenue,
+    cogs: totalCogs,
+    grossProfit: totalRevenue - totalCogs,
+    orders: salesForDay.length
+  };
+
+  const dsIndex = db.data.dailySales.findIndex(d => d.date === dateString);
+  if (dsIndex > -1) {
+    db.data.dailySales[dsIndex] = dailySaleSummary;
+  } else {
+    db.data.dailySales.push(dailySaleSummary);
+  }
+
+  // 2. Calculate Daily Expenses
+  const totalExpenses = expensesForDay.reduce((sum, exp) => sum + (exp.amount || 0), 0);
+  const dailyExpenseSummary = { date: dateString, amount: totalExpenses };
+
+  const deIndex = db.data.dailyExpenses.findIndex(d => d.date === dateString);
+  if (deIndex > -1) {
+    db.data.dailyExpenses[deIndex] = dailyExpenseSummary;
+  } else {
+    db.data.dailyExpenses.push(dailyExpenseSummary);
+  }
+
+  console.log(`Updated daily facts for ${dateString}.`);
+  await db.write();
+}
+
+
+// =======================================================
+//  UPGRADED DATABASE FUNCTIONS (Now with automatic updates)
+// =======================================================
+
 async function appendTransaction(transactionData) {
-  await db.read(); // Make sure we have the latest data
-  const id = moment().tz("Asia/Kolkata").format();
+  await db.read();
+  const id = moment().tz("Asia/Kolkata").toISOString();
   const newTransaction = { id, ...transactionData };
   db.data.transactions.push(newTransaction);
-  await db.write(); // Save changes to the file
-  console.log(`Saved transaction ${id} to local db.json.`);
+  await db.write();
+  
+  // Automatically update daily facts
+  await updateDailyFacts(id);
+
+  console.log(`Saved transaction ${id} and updated facts.`);
   return newTransaction;
 }
 
-/**
- * Retrieves all transaction records from the database.
- */
-async function getAllTransactions() {
-  await db.read();
-  // Sort by date (oldest first) to ensure consistent order
-  return db.data.transactions.sort((a, b) => new Date(a.id) - new Date(b.id));
-}
-
-/**
- * Retrieves a single transaction by its ID.
- */
-async function getTransactionById(id) {
-    await db.read();
-    return db.data.transactions.find(tx => tx.id === id);
-}
-
-/**
- * Deletes a single transaction by its ID.
- */
-async function deleteTransaction(id) {
-  await db.read();
-  db.data.transactions = db.data.transactions.filter(tx => {
-  // Check against the timestamp ID, the human-readable Order ID, and the human-readable Expense ID
-  return tx.id !== id && tx.orderId !== id && tx.expenseId !== id;
-  });
-  await db.write();
-  console.log(`Deleted transaction ${id} from db.json.`);
-}
-
-/**
- * Updates a single transaction. Merges new data with old data.
- * Can find the record by its timestamp id, orderId, expenseId, or customerId.
- */
 async function updateTransaction(id, updatedData) {
   await db.read();
   const txIndex = db.data.transactions.findIndex(tx => 
-    tx.id === id || 
-    tx.orderId === id ||
-    tx.expenseId === id ||
-    tx.customerId === id
+    tx.id === id || tx.orderId === id || tx.expenseId === id || tx.customerId === id
   );
 
   if (txIndex !== -1) {
-    // Merge the existing transaction with the updated data
+    const originalDate = db.data.transactions[txIndex].id;
     db.data.transactions[txIndex] = { ...db.data.transactions[txIndex], ...updatedData };
     await db.write();
-    console.log(`Updated transaction ${id}.`);
-    return db.data.transactions[txIndex]; // Return the updated transaction
+    
+    // Automatically update daily facts for the original date
+    await updateDailyFacts(originalDate);
+
+    console.log(`Updated transaction ${id} and updated facts.`);
+    return db.data.transactions[txIndex];
   } else {
-    console.log(`Could not find transaction ${id} to update.`);
     throw new Error(`Transaction with ID ${id} not found.`);
   }
 }
 
-/**
- * Retrieves the most recent 'Sale' transaction for a specific user.
- */
+async function deleteTransaction(id) {
+  await db.read();
+  const txIndex = db.data.transactions.findIndex(tx => 
+    tx.id === id || tx.orderId === id || tx.expenseId === id
+  );
+
+  if (txIndex > -1) {
+    const originalDate = db.data.transactions[txIndex].id;
+    db.data.transactions.splice(txIndex, 1);
+    await db.write();
+
+    // Automatically update daily facts
+    await updateDailyFacts(originalDate);
+
+    console.log(`Deleted transaction ${id} and updated facts.`);
+  }
+}
+
+
+// Unchanged functions below
+async function getAllTransactions() {
+  await db.read();
+  return db.data.transactions.sort((a, b) => new Date(a.id) - new Date(b.id));
+}
+
+async function getTransactionById(id) {
+    await db.read();
+    return db.data.transactions.find(tx => tx.id === id || tx.orderId === id || tx.expenseId === id);
+}
+
 async function getLastSaleTransaction(entryByUser) {
   await db.read();
   const userSales = db.data.transactions
     .filter(tx => tx.type === 'Sale' && tx.entryBy === entryByUser)
-    .sort((a, b) => new Date(b.id) - new Date(a.id)); // Sort descending (newest first)
-
+    .sort((a, b) => new Date(b.id) - new Date(a.id)); 
   return userSales.length > 0 ? userSales[0] : null;
 }
 
@@ -100,7 +163,7 @@ async function getAllExpenses() {
   return allTransactions.filter(tx => tx.type === 'Expense');
 }
 
-// We need to export the new getTransactionById and initializeDb functions as well
+
 module.exports = {
   initializeDb,
   appendTransaction,
@@ -109,5 +172,7 @@ module.exports = {
   getTransactionById, 
   getLastSaleTransaction,
   deleteTransaction,
-  updateTransaction
+  updateTransaction,
+  // NEW: Export the update function in case we need it
+  updateDailyFacts
 };
