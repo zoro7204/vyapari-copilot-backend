@@ -20,28 +20,50 @@ const db = admin.firestore();
 
 // updateStock function is unchanged
 async function updateStock(itemName, quantitySold) {
-    if (!itemName || !quantitySold) { return { alertMessage: null }; }
+    if (!itemName || !quantitySold) { 
+        return { alertMessage: null }; 
+    }
+
+    const lowerCaseItemName = itemName.trim().toLowerCase();
     const inventoryRef = db.collection('inventory');
+
     try {
-        const querySnapshot = await inventoryRef.where('itemName', '==', itemName).limit(1).get();
-        if (querySnapshot.empty) {
-            console.log(`Item "${itemName}" not found in Firestore inventory.`);
+        const snapshot = await inventoryRef.get();
+        if (snapshot.empty) {
+            console.log(`Inventory is empty. Cannot update stock for "${itemName}".`);
             return { alertMessage: null };
         }
-        const itemDoc = querySnapshot.docs[0];
+
+        // Find the document by comparing lowercase names in our code
+        const itemDoc = snapshot.docs.find(doc => 
+            doc.data().itemName.trim().toLowerCase() === lowerCaseItemName
+        );
+
+        if (!itemDoc) {
+            console.log(`Item "${itemName}" not found with a case-insensitive search.`);
+            return { alertMessage: null };
+        }
+
         const itemData = itemDoc.data();
         const currentQuantity = itemData.quantity;
         const lowStockThreshold = itemData.lowStockThreshold || 10;
         const newQuantity = currentQuantity - parseInt(quantitySold, 10);
+
         let alertMessage = null;
         if (newQuantity <= lowStockThreshold && currentQuantity > lowStockThreshold) {
-            alertMessage = `⚠️ LOW STOCK ALERT: Only ${newQuantity} units of '${itemName}' remaining (Threshold is ${lowStockThreshold}). Time to reorder.`;
+            alertMessage = `⚠️ LOW STOCK ALERT: Only ${newQuantity} units of '${itemData.itemName}' remaining.`;
         }
-        await itemDoc.ref.update({ quantity: newQuantity });
-        console.log(`Firestore Stock for "${itemName}" updated from ${currentQuantity} to ${newQuantity}.`);
+
+        await itemDoc.ref.update({ 
+          quantity: newQuantity,
+          lastSoldDate: new Date().toISOString()
+        });
+
+        console.log(`Stock for "${itemData.itemName}" updated to ${newQuantity}.`);
         return { alertMessage };
+
     } catch (err) {
-        console.error('ERROR updating Firestore stock:', err);
+        console.error('ERROR updating stock:', err);
         return { alertMessage: null };
     }
 }
@@ -62,7 +84,7 @@ async function processInventoryFile(fileId) { /* ... unchanged ... */
     const results = [];
     const fileStream = fileResponse.body;
     return new Promise((resolve, reject) => {
-        fileStream.pipe(csv({ mapHeaders: ({ header }) => header.trim().toLowerCase() }))
+        fileStream.pipe(csv({ mapHeaders: ({ header }) => header.trim().toLowerCase().replace(/\s+/g, '')  }))
             .on('data', (data) => results.push(data))
             .on('end', () => {
                 console.log('CSV file successfully processed.');
@@ -76,30 +98,62 @@ async function processInventoryFile(fileId) { /* ... unchanged ... */
 }
 
 // syncInventoryFromCSV function is unchanged
-async function syncInventoryFromCSV(inventoryData) { /* ... unchanged ... */ 
-    const inventoryRef = db.collection('inventory');
-    const batch = db.batch();
-    const snapshot = await inventoryRef.get();
-    snapshot.docs.forEach(doc => { batch.delete(doc.ref); });
-    console.log('Cleared old inventory.');
-    inventoryData.forEach(item => {
-        const itemName = item.itemname;
-        const quantity = parseInt(item.quantity, 10) || 0;
-        const costPrice = parseFloat(item.costprice) || 0;
-        const lowStockThreshold = parseInt(item.lowstockthreshold, 10) || 10;
-        if (itemName) {
-            const docRef = inventoryRef.doc();
-            batch.set(docRef, {
-                itemName: itemName,
-                quantity: quantity,
-                costPrice: costPrice,
-                lowStockThreshold: lowStockThreshold
-            });
-        }
-    });
-    await batch.commit();
-    console.log(`Inventory sync complete. ${inventoryData.length} items synced.`);
-    return { success: true, count: inventoryData.length };
+async function syncInventoryFromCSV(inventoryData) {
+  const inventoryRef = db.collection('inventory');
+  const batch = db.batch();
+
+  // 1. Get all current inventory items from Firestore
+  const snapshot = await inventoryRef.get();
+  const existingInventoryMap = new Map();
+  snapshot.docs.forEach(doc => {
+    // Store existing items in a map for quick lookups, using lowercase name as the key
+    const data = doc.data();
+    existingInventoryMap.set(data.itemName.trim().toLowerCase(), { id: doc.id, ...data });
+  });
+
+  let newItemsCount = 0;
+  let updatedItemsCount = 0;
+
+  // 2. Loop through each item from the uploaded CSV file
+  inventoryData.forEach(csvItem => {
+    const itemName = csvItem.itemname?.trim();
+    if (!itemName) return; // Skip rows without an item name
+
+    const lowerCaseItemName = itemName.toLowerCase();
+    const existingItem = existingInventoryMap.get(lowerCaseItemName);
+
+    if (existingItem) {
+      // --- ITEM EXISTS: UPDATE IT ---
+      const docRef = inventoryRef.doc(existingItem.id);
+      const newQuantity = (existingItem.quantity || 0) + (parseInt(csvItem.quantity, 10) || 0);
+
+      // We only update the quantity. We could update other fields too if we wanted.
+      batch.update(docRef, { quantity: newQuantity });
+      updatedItemsCount++;
+
+    } else {
+      // --- ITEM IS NEW: CREATE IT ---
+      const newItem = {
+        itemName: itemName,
+        category: csvItem.category || 'Uncategorized',
+        quantity: parseInt(csvItem.quantity, 10) || 0,
+        costPrice: parseFloat(csvItem.costprice) || 0,
+        sellingPrice: parseFloat(csvItem.sellingprice) || 0,
+        lowStockThreshold: parseInt(csvItem.lowstockthreshold, 10) || 10,
+        createdAt: new Date().toISOString()
+      };
+      const docRef = inventoryRef.doc(); // Create a new document reference
+      batch.set(docRef, newItem);
+      newItemsCount++;
+    }
+  });
+
+  // 3. Commit all the changes at once
+  await batch.commit();
+
+  const summary = `Inventory sync complete. ${newItemsCount} new items added, ${updatedItemsCount} items updated.`;
+  console.log(summary);
+  return { success: true, message: summary, count: inventoryData.length };
 }
 
 // getItemDetails function is unchanged

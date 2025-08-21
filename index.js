@@ -476,18 +476,56 @@ app.get('/api/dashboard', async (req, res) => {
 app.get('/api/inventory', async (req, res) => {
   try {
     const inventorySnapshot = await db.collection('inventory').get();
-    
     if (inventorySnapshot.empty) {
-      return res.json([]); // Return an empty array if there's no inventory
+      return res.json([]);
     }
-    
+
+    // 1. Get all sales transactions from our local DB
+    const allTransactions = await getAllTransactions();
+    const saleTransactions = allTransactions.filter(tx => tx.type === 'Sale');
+
+    // 2. Get the inventory list from Firestore
     const inventoryList = inventorySnapshot.docs.map(doc => ({
-      id: doc.id, // The unique ID from Firestore
+      id: doc.id,
       ...doc.data()
     }));
 
-    console.log(`Found and sending ${inventoryList.length} inventory items.`);
-    res.json(inventoryList);
+    const enrichedInventory = inventoryList.map(item => {
+      let unitsSold = 0;
+      let generatedRevenue = 0;
+      let latestSaleDate = null; // <-- Initialize a variable to track the latest date
+
+      for (const sale of saleTransactions) {
+        // This is our "bilingual" logic from before
+        const firstItem = sale.items && sale.items[0] ? sale.items[0] : {};
+        const saleItemName = (firstItem.name || sale.item || '').trim().toLowerCase();
+        const saleQty = firstItem.qty || sale.qty || 0;
+
+        if (saleItemName === item.itemName.trim().toLowerCase()) {
+          unitsSold += saleQty;
+          generatedRevenue += (sale.grossAmount || 0) - (sale.discount || 0);
+
+          // --- NEW LOGIC: Find the latest sale date ---
+          const saleDate = new Date(sale.id);
+          if (!latestSaleDate || saleDate > latestSaleDate) {
+            latestSaleDate = saleDate;
+          }
+        }
+      }
+
+      // Convert the latest date found into a string, or null if no sales were found
+      const calculatedLastSold = latestSaleDate ? latestSaleDate.toISOString() : null;
+
+      return {
+        ...item,
+        unitsSold,
+        generatedRevenue,
+        // Use the date from Firestore if it exists, otherwise use the one we just calculated
+        lastSoldDate: item.lastSoldDate || calculatedLastSold 
+      };
+    });
+    console.log(`Found and sending ${enrichedInventory.length} enriched inventory items.`);
+    res.json(enrichedInventory);
 
   } catch (error) {
     console.error('API Error in /api/inventory:', error);
@@ -501,15 +539,26 @@ const upload = multer({ dest: 'uploads/' }); // Temp folder for uploads
 // CREATE a new inventory item
 app.post('/api/inventory', async (req, res) => {
   try {
-    const newItemData = req.body;
-    if (!newItemData.itemName || !newItemData.quantity || !newItemData.costPrice || !newItemData.sellingPrice) {
-      return res.status(400).json({ error: 'Missing required fields.' });
+    const { itemName, quantity, costPrice, sellingPrice } = req.body;
+
+    // --- NEW, STRONGER VALIDATION ---
+    if (!itemName || quantity == null || costPrice == null || sellingPrice == null) {
+      return res.status(400).json({ error: 'itemName, quantity, costPrice, and sellingPrice are required.' });
     }
+    // --- NEW, STRICTER RULE ---
+    if (costPrice <= 0 || sellingPrice <= 0) {
+      return res.status(400).json({ error: 'Cost price and selling price must be greater than 0.' });
+    }
+    if (typeof quantity !== 'number' || typeof costPrice !== 'number' || typeof sellingPrice !== 'number') {
+        return res.status(400).json({ error: 'quantity, costPrice, and sellingPrice must be numbers.' });
+    }
+    // --- END OF VALIDATION ---
+
+    const newItemData = { itemName, quantity, costPrice, sellingPrice, ...req.body };
     const docRef = await db.collection('inventory').add(newItemData);
     res.status(201).json({ id: docRef.id, ...newItemData });
   } catch (error) {
-    console.error('API Error in POST /api/inventory:', error);
-    res.status(500).json({ error: 'Failed to create inventory item.' });
+    // ...
   }
 });
 
@@ -518,6 +567,17 @@ app.patch('/api/inventory/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updatedData = req.body;
+    const criticalFields = ['quantity', 'costPrice', 'sellingPrice'];
+    for (const field of criticalFields) {
+      // Check if the update is trying to modify a critical field
+      if (updatedData.hasOwnProperty(field)) {
+        const value = updatedData[field];
+        // If the new value is null, or not a number, block the update
+        if (value === null || typeof value !== 'number') {
+          return res.status(400).json({ error: `${field} must be a valid number and cannot be null.` });
+        }
+      }
+    }
     await db.collection('inventory').doc(id).update(updatedData);
     res.status(200).json({ message: `Item ${id} updated successfully.` });
   } catch (error) {
@@ -838,21 +898,23 @@ app.get('/api/customers/:id', async (req, res) => {
     let lastPurchaseDate = new Date(customerOrders[0].id);
 
     const orderHistory = customerOrders.map(order => {
-      const finalAmount = (order.grossAmount || 0) - (order.discount || 0);
-      lifetimeSpend += finalAmount;
+    const finalAmount = (order.grossAmount || 0) - (order.discount || 0);
+    const orderDate = new Date(order.id);
 
-      const orderDate = new Date(order.id);
-      if (orderDate < firstPurchaseDate) firstPurchaseDate = orderDate;
-      if (orderDate > lastPurchaseDate) lastPurchaseDate = orderDate;
+    // --- NEW, CORRECTED LOGIC ---
+    const firstItem = order.items && order.items[0] ? order.items[0] : {};
+    const qty = firstItem.qty || order.qty; // Use nested qty, fallback to old
+    const name = firstItem.name || order.item; // Use nested name, fallback to old
+    // --- END OF NEW LOGIC ---
 
-      return {
-        orderId: order.orderId || 'N/A',
-        date: orderDate.toISOString().split('T')[0],
-        items: `${order.qty} x ${order.item}`,
-        amount: finalAmount,
-        status: order.status || 'Confirmed'
-      };
-    });
+    return {
+     orderId: order.orderId || 'N/A',
+      date: orderDate.toISOString().split('T')[0],
+      items: `${qty} x ${name}`, // <-- Use the new safe variables
+      amount: finalAmount,
+      status: order.status || 'Confirmed'
+    };
+  });
     
     // 5. Calculate final derived values
     const thirtyDaysAgo = new Date();
@@ -1451,6 +1513,10 @@ app.post(`/webhook`, async (req, res) => {
 
     // --- THE FIX: Upgraded Sale & Expense Logic ---
     } else if (parsedData.type === 'Sale') {
+      if (!parsedData.item || typeof parsedData.item !== 'string' || parsedData.item.trim() === '') {
+        console.error("VALIDATION FAILED: Sale data from Telegram is missing a valid item name.", parsedData);
+        throw new Error('Parsed sale data from Telegram is missing a valid item name.');
+      }
       const itemDetails = await getItemDetails(parsedData.item);
       if (!itemDetails) { throw new Error(`Item "${parsedData.item}" not found in inventory.`); }
 

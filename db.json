@@ -1102,6 +1102,111 @@
       "customerName": "saroj",
       "customerPhone": "7485789612",
       "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-21T08:50:21.124Z",
+      "orderId": "ORD-048",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 3,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 4200,
+      "discount": 420,
+      "discountString": "10%",
+      "profit": 1380,
+      "status": "Confirmed",
+      "customerName": "sangeeta",
+      "customerPhone": "9854985498",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-21T10:23:23.481Z",
+      "orderId": "ORD-049",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "silk saree",
+          "qty": 1,
+          "price": 1100,
+          "costAtSale": 750
+        }
+      ],
+      "grossAmount": 1100,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 350,
+      "status": "Confirmed",
+      "customerName": "sunita",
+      "customerPhone": "7204850677",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-21T12:04:29.705Z",
+      "orderId": "ORD-050",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans ",
+          "qty": 1,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 140,
+      "discountString": "10%",
+      "profit": 460,
+      "status": "completed",
+      "customerName": "veeresh",
+      "customerPhone": "7483779943",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-21T12:10:22.200Z",
+      "orderId": "ORD-051",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "denim jeans",
+          "qty": 1,
+          "price": 1400,
+          "costAtSale": 800
+        }
+      ],
+      "grossAmount": 1400,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 600,
+      "status": "Confirmed",
+      "customerName": "sunita",
+      "customerPhone": "7204850677",
+      "entryBy": "Dashboard"
+    },
+    {
+      "id": "2025-08-21T13:55:05.348Z",
+      "orderId": "ORD-052",
+      "type": "Sale",
+      "items": [
+        {
+          "name": "cotton kurta",
+          "qty": 1,
+          "price": 1000,
+          "costAtSale": 650
+        }
+      ],
+      "grossAmount": 1000,
+      "discount": 0,
+      "discountString": "0",
+      "profit": 350,
+      "status": "Confirmed",
+      "customerName": "sunita",
+      "customerPhone": "7204850677",
+      "entryBy": "Dashboard"
     }
   ],
   "dailySales": [
@@ -1118,6 +1223,13 @@
       "cogs": 450,
       "grossProfit": 550,
       "orders": 1
+    },
+    {
+      "date": "2025-08-21",
+      "revenue": 8540,
+      "cogs": 5400,
+      "grossProfit": 3140,
+      "orders": 5
     }
   ],
   "dailyExpenses": [
@@ -1127,6 +1239,10 @@
     },
     {
       "date": "2025-08-20",
+      "amount": 0
+    },
+    {
+      "date": "2025-08-21",
       "amount": 0
     }
   ],
